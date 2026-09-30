@@ -1,0 +1,71 @@
+<div class="page">
+  <header class="page-head">
+    <h1>Jueces</h1>
+    <button type="button" class="btn btn-primary btn-sm" (click)="openCreate()">
+      <app-icon name="plus" [size]="18" /> Nuevo
+    </button>
+  </header>
+
+  @if (error(); as err) {
+    <app-error-state [message]="err" />
+  }
+
+  @if (judges() === null && !error()) {
+    <div class="skeleton" style="height: 120px"></div>
+  } @else {
+    <ul class="list">
+      @for (j of judges(); track j.uid) {
+        <li class="list-item" style="cursor: default">
+          <app-icon name="shield" />
+          <span class="grow">
+            <span class="item-title" style="display: block">{{ j.displayName }}</span>
+            <span class="item-sub mono">{{ j.username || 'cuenta creada en consola' }}</span>
+          </span>
+          @if (j.uid === auth.profile()?.uid) {
+            <span class="badge badge-primary">Tú</span>
+          } @else {
+            <button type="button" class="btn btn-danger-ghost btn-sm" (click)="revoke(j)">Retirar</button>
+          }
+        </li>
+      }
+    </ul>
+  }
+  <p class="hint">
+    Retirar el acceso borra el perfil y quita todos los permisos al instante. Para borrar la cuenta
+    de Authentication o cambiar una contraseña, usa Firebase Console.
+  </p>
+</div>
+
+<app-sheet [open]="open()" heading="Nuevo juez" (closed)="open.set(false)">
+  @if (created(); as account) {
+    <app-credentials-card [username]="account.username" [password]="account.password" />
+    <button type="button" class="btn btn-primary btn-block" style="margin-top: 12px" (click)="open.set(false)">Hecho</button>
+  } @else {
+    <form class="stack" [formGroup]="form" (ngSubmit)="create()" novalidate>
+      <div class="field">
+        <label for="j-name">Nombre</label>
+        <input id="j-name" class="input" formControlName="displayName" autocomplete="off" placeholder="p. ej. Marta (Informática)" />
+        @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+          <span class="field-error">El nombre es obligatorio.</span>
+        }
+      </div>
+      <div class="field">
+        <label for="j-user">Usuario</label>
+        <input id="j-user" class="input mono" formControlName="username" autocapitalize="none" spellcheck="false" autocomplete="off" />
+        @if (form.controls.username.touched && form.controls.username.invalid) {
+          <span class="field-error">3-30 caracteres: minúsculas, números, punto, guion o guion bajo.</span>
+        }
+      </div>
+      <div class="field">
+        <label for="j-pass">Contraseña</label>
+        <input id="j-pass" class="input mono" formControlName="password" autocomplete="off" />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="field-error">Mínimo 6 caracteres.</span>
+        }
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg btn-block" [disabled]="creating()">
+        {{ creating() ? 'Creando…' : 'Crear juez' }}
+      </button>
+    </form>
+  }
+</app-sheet>

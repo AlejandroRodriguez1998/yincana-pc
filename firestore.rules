@@ -1,0 +1,300 @@
+rules_version = '2';
+
+// =============================================================================
+//  Yincana PC · Reglas de seguridad de Cloud Firestore
+//
+//  Principios:
+//  - Denegar por defecto: todo lo que no se permite explícitamente está prohibido.
+//  - El rol se lee de users/{uid}, que SOLO pueden escribir los jueces: nadie puede
+//    auto-asignarse un rol desde el frontend.
+//  - Una cuenta de Authentication sin documento users/{uid} no tiene ningún permiso.
+//  - Los grupos solo pueden LEER: su perfil, su grupo, sus resultados, las pruebas,
+//    los ajustes y, SOLO cuando un juez revela el ranking, los totales públicos.
+//    Nunca escriben nada, y no pueden ver los tiempos por prueba de otros grupos.
+//  - Cada escritura de un resultado debe ir acompañada, en la misma transacción,
+//    de su entrada de auditoría (inmutable).
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+
+    function docPath(collectionName, id) {
+      return /databases/$(database)/documents/$(collectionName)/$(id);
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasProfile() {
+      return signedIn() && exists(docPath('users', request.auth.uid));
+    }
+
+    function profile() {
+      return get(docPath('users', request.auth.uid)).data;
+    }
+
+    function isJudge() {
+      return hasProfile() && profile().role == 'judge';
+    }
+
+    function isGroupUser() {
+      return hasProfile() && profile().role == 'group';
+    }
+
+    function myGroupId() {
+      return profile().groupId;
+    }
+
+    // Cualquier usuario con perfil válido (juez o grupo).
+    function isMember() {
+      return isJudge() || isGroupUser();
+    }
+
+    function isText(value, minSize, maxSize) {
+      return value is string && value.size() >= minSize && value.size() <= maxSize;
+    }
+
+    // Duración en milisegundos enteros, entre 0 y 24 horas.
+    function isDuration(value) {
+      return value is int && value >= 0 && value <= 86400000;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    function hasExactly(data, fields) {
+      return data.keys().hasAll(fields) && data.keys().hasOnly(fields);
+    }
+
+    // ------------------------------------------------------------------ users
+    // users/{uid}: { role, groupId, displayName, username, createdAt }
+
+    function validUser(d) {
+      return hasExactly(d, ['role', 'groupId', 'displayName', 'username', 'createdAt'])
+        && isText(d.displayName, 1, 80)
+        && isText(d.username, 0, 30)
+        && (
+          (d.role == 'judge' && d.groupId == null)
+          || (d.role == 'group' && d.groupId is string && exists(docPath('groups', d.groupId)))
+        );
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isJudge());
+      allow list: if isJudge();
+
+      allow create: if isJudge()
+        && validUser(incoming())
+        && incoming().createdAt == request.time;
+
+      // Un juez no puede quitarse a sí mismo el rol de juez (evita quedarse sin administradores).
+      allow update: if isJudge()
+        && validUser(incoming())
+        && unchanged('createdAt')
+        && (uid != request.auth.uid || incoming().role == 'judge');
+
+      allow delete: if isJudge() && uid != request.auth.uid;
+    }
+
+    // ----------------------------------------------------------------- groups
+    // groups/{groupId}: { name, participants[], active, createdAt, updatedAt }
+
+    function validGroup(d) {
+      return hasExactly(d, ['name', 'participants', 'active', 'createdAt', 'updatedAt'])
+        && isText(d.name, 1, 60)
+        && d.participants is list
+        && d.participants.size() <= 30
+        && d.active is bool
+        && d.updatedAt == request.time;
+    }
+
+    match /groups/{groupId} {
+      allow get: if isJudge() || (isGroupUser() && myGroupId() == groupId);
+      allow list: if isJudge();
+
+      allow create: if isJudge()
+        && validGroup(incoming())
+        && incoming().createdAt == request.time;
+
+      allow update: if isJudge()
+        && validGroup(incoming())
+        && unchanged('createdAt');
+
+      allow delete: if isJudge();
+    }
+
+    // ------------------------------------------------------------------ tests
+    // tests/{testId}: { name, description, order, active, createdAt, updatedAt }
+    // Todas las pruebas se cronometran.
+
+    function validTest(d) {
+      return hasExactly(d, ['name', 'description', 'order', 'active', 'createdAt', 'updatedAt'])
+        && isText(d.name, 1, 80)
+        && isText(d.description, 0, 1000)
+        && d.order is int
+        && d.active is bool
+        && d.updatedAt == request.time;
+    }
+
+    match /tests/{testId} {
+      allow read: if isMember();
+
+      allow create: if isJudge()
+        && validTest(incoming())
+        && incoming().createdAt == request.time;
+
+      allow update: if isJudge()
+        && validTest(incoming())
+        && unchanged('createdAt');
+
+      allow delete: if isJudge();
+    }
+
+    // ----------------------------------------------------------------- scores
+    // scores/{groupId}__{testId}: { groupId, testId, timeMs, penaltyMs, totalMs,
+    //                               judgeId, judgeName, auditId, createdAt, updatedAt }
+
+    // La entrada de auditoría indicada en auditId debe existir al final de la
+    // misma transacción y referirse a esta puntuación y a este juez.
+    function auditWrittenWith(scoreId, auditId) {
+      let log = getAfter(docPath('auditLogs', auditId)).data;
+      return log.entityType == 'score'
+        && log.entityId == scoreId
+        && log.actorId == request.auth.uid
+        && log.at == request.time;
+    }
+
+    function validScore(scoreId) {
+      let d = incoming();
+      let test = get(docPath('tests', d.testId)).data;
+      let group = get(docPath('groups', d.groupId)).data;
+      return hasExactly(d, ['groupId', 'testId', 'timeMs', 'penaltyMs', 'totalMs',
+                            'judgeId', 'judgeName', 'auditId', 'createdAt', 'updatedAt'])
+        // Una única puntuación por grupo y prueba (ID determinista).
+        && d.groupId is string
+        && d.testId is string
+        && scoreId == d.groupId + '__' + d.testId
+        // Solo se puntúan grupos y pruebas activos (en competición).
+        && group.active == true
+        && test.active == true
+        // Tiempos en ms y fórmula: totalMs = timeMs + penaltyMs.
+        && isDuration(d.timeMs)
+        && d.timeMs > 0
+        && isDuration(d.penaltyMs)
+        && d.totalMs == d.timeMs + d.penaltyMs
+        // El juez responsable es quien escribe.
+        && d.judgeId == request.auth.uid
+        && isText(d.judgeName, 0, 80)
+        && d.updatedAt == request.time
+        && d.auditId is string
+        && auditWrittenWith(scoreId, d.auditId);
+    }
+
+    match /scores/{scoreId} {
+      // Un grupo solo lee sus propios resultados (también en consultas por groupId).
+      allow read: if isJudge() || (isGroupUser() && resource.data.groupId == myGroupId());
+
+      allow create: if isJudge()
+        && validScore(scoreId)
+        && incoming().createdAt == request.time;
+
+      allow update: if isJudge()
+        && validScore(scoreId)
+        && unchanged('groupId')
+        && unchanged('testId')
+        && unchanged('createdAt')
+        && incoming().auditId != resource.data.auditId;
+
+      allow delete: if isJudge();
+    }
+
+    // -------------------------------------------------------------- auditLogs
+    // Historial inmutable. Solo visible para jueces.
+
+    function auditConsistent(logId, d) {
+      // Resultados: la entrada debe corresponder a una escritura real en el mismo lote.
+      return (d.entityType == 'score' && d.action != 'delete'
+          && getAfter(docPath('scores', d.entityId)).data.auditId == logId)
+        || (d.entityType == 'score' && d.action == 'delete'
+          && !existsAfter(docPath('scores', d.entityId)))
+        // Borrados de grupos/pruebas: el elemento debe desaparecer en el mismo lote.
+        || (d.entityType == 'group' && d.action == 'delete'
+          && !existsAfter(docPath('groups', d.entityId)))
+        || (d.entityType == 'test' && d.action == 'delete'
+          && !existsAfter(docPath('tests', d.entityId)));
+    }
+
+    function validAudit(logId, d) {
+      return hasExactly(d, ['entityType', 'entityId', 'action', 'groupId', 'groupName', 'testId',
+                            'testName', 'before', 'after', 'note', 'actorId', 'actorName', 'at'])
+        && d.entityType in ['score', 'group', 'test']
+        && d.action in ['create', 'update', 'delete']
+        && isText(d.entityId, 1, 200)
+        && (d.groupId == null || d.groupId is string)
+        && (d.groupName == null || d.groupName is string)
+        && (d.testId == null || d.testId is string)
+        && (d.testName == null || d.testName is string)
+        && (d.before == null || d.before is map)
+        && (d.after == null || d.after is map)
+        && (d.note == null || isText(d.note, 0, 500))
+        && d.actorId == request.auth.uid
+        && isText(d.actorName, 0, 80)
+        && d.at == request.time
+        && auditConsistent(logId, d);
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isJudge();
+      allow create: if isJudge() && validAudit(logId, incoming());
+      allow update, delete: if false;
+    }
+
+    // --------------------------------------------------------------- settings
+    // settings/competition: { rankingRevealed, revealedAt, updatedBy, updatedAt }
+
+    // Los grupos ven el ranking cuando está revelado y ha terminado la animación
+    // del podio: 12 s después de pulsar "Revelar" (GROUP_REVEAL_DELAY_MS en la app).
+    function rankingVisibleToGroups() {
+      let path = docPath('settings', 'competition');
+      let settings = get(path).data;
+      return exists(path)
+        && settings.rankingRevealed == true
+        && settings.revealedAt is timestamp
+        && request.time > settings.revealedAt + duration.value(12, 's');
+    }
+
+    match /settings/{docId} {
+      allow read: if isMember();
+      allow write: if isJudge()
+        && docId == 'competition'
+        && hasExactly(incoming(), ['rankingRevealed', 'revealedAt', 'updatedBy', 'updatedAt'])
+        && incoming().rankingRevealed is bool
+        && (
+          (incoming().rankingRevealed == true && incoming().revealedAt == request.time)
+          || (incoming().rankingRevealed == false && incoming().revealedAt == null)
+        )
+        && incoming().updatedBy == request.auth.uid
+        && incoming().updatedAt == request.time;
+    }
+
+    // -------------------------------------------------------------- standings
+    // standings/current: desglose por grupo y prueba (ranking del juez). Solo jueces.
+    // standings/public:  nombre, tiempo total y pruebas completadas de cada grupo.
+    //                    Los grupos solo pueden leerlo cuando el ranking está revelado
+    //                    y ha terminado la animación del podio.
+    // Ambos los mantienen los jueces.
+
+    match /standings/{docId} {
+      allow read: if isJudge() || (docId == 'public' && isGroupUser() && rankingVisibleToGroups());
+      allow write: if isJudge() && docId in ['current', 'public'];
+    }
+  }
+}

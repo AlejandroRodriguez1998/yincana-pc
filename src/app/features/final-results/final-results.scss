@@ -1,0 +1,978 @@
+@use 'mixins' as *;
+
+// Pantalla de "escenario": siempre oscura, pensada para proyector y TV.
+:host {
+  --st-bg: #070c14;
+  --st-surface: #0f1724;
+  --st-surface-2: #152033;
+  --st-border: #22324a;
+  --st-text: #eef3fa;
+  --st-muted: #93a3bb;
+  --st-primary: #4d8dff;
+  --st-accent: #2fcf8f;
+  --st-gold: #f2c14e;
+  --st-silver: #c9d3df;
+  --st-bronze: #d78f52;
+
+  // Ancho fijo (no em) de la columna de posición: el total se ancla a su izquierda.
+  --pos-w: clamp(84px, 6.5vw, 140px);
+  // Alto disponible: toda la ventana, o descontando la barra inferior del juez.
+  --screen-h: 100dvh;
+
+  color-scheme: dark;
+  display: block;
+  min-height: var(--screen-h);
+  color: var(--st-text);
+  background:
+    radial-gradient(1200px 500px at 50% -10%, rgba(77, 141, 255, 0.22), transparent 70%),
+    radial-gradient(800px 400px at 100% 100%, rgba(47, 207, 143, 0.1), transparent 70%),
+    var(--st-bg);
+  font-size: clamp(14px, 0.55vw + 10px, 22px);
+}
+
+.stage {
+  position: relative;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: clamp(12px, 2vw, 40px);
+  padding-bottom: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2.2vw, 40px);
+
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    @include pcb-texture(rgba(255, 255, 255, 0.035));
+    background-size: 22px 22px;
+    pointer-events: none;
+  }
+
+  > * {
+    position: relative;
+  }
+}
+
+// Dentro del panel del juez: deja sitio a la barra de navegación inferior.
+:host(.embedded) {
+  --screen-h: calc(100dvh - var(--nav-height) - var(--safe-bottom));
+
+  .stage {
+    padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 24px);
+  }
+}
+
+@media (min-width: 900px) and (min-height: 520px) {
+  :host(.embedded) .stage {
+    padding-bottom: clamp(10px, 2vh, 32px);
+  }
+}
+
+/* ---------- Barra superior ---------- */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-btn {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--st-border);
+  background: var(--st-surface);
+  color: var(--st-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--st-text);
+  }
+}
+
+.brand {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.logo {
+  display: grid;
+  place-items: center;
+  width: 2.4em;
+  height: 2.4em;
+  border-radius: 0.7em;
+  background: linear-gradient(135deg, var(--st-primary), var(--st-accent));
+  color: #fff;
+}
+
+.brand-name {
+  white-space: nowrap;
+  font-size: 1.35em;
+  font-weight: 800;
+  line-height: 1.1;
+
+  span {
+    color: var(--st-primary);
+  }
+}
+
+.brand-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8em;
+  color: var(--st-muted);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(47, 207, 143, 0.12);
+  color: var(--st-accent);
+  font-size: 0.8em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+// En móvil no cabe junto al título y el botón de revelar.
+@media (max-width: 599px) {
+  .live {
+    display: none;
+  }
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--st-accent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* ---------- Estados ---------- */
+.loading,
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 12vh 16px;
+  color: var(--st-muted);
+  text-align: center;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid var(--st-primary);
+  border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+.error {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff9b9b;
+}
+
+/* ---------- Sin empezar ---------- */
+.not-started {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 1.4em 1em;
+  border-radius: 20px;
+  border: 1px dashed var(--st-border);
+  color: var(--st-muted);
+  font-size: 1.1em;
+  text-align: center;
+}
+
+/* ---------- Podio ---------- */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: clamp(6px, 1.2vw, 20px);
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: clamp(8px, 2vw, 24px);
+}
+
+// Orden visual clásico: 2º · 1º · 3º (slot-0 es el primer clasificado).
+.slot-0 {
+  order: 2;
+}
+.slot-1 {
+  order: 1;
+}
+.slot-2 {
+  order: 3;
+}
+
+.slot {
+  --medal: var(--st-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+
+  &.gold {
+    --medal: var(--st-gold);
+  }
+  &.silver {
+    --medal: var(--st-silver);
+  }
+  &.bronze {
+    --medal: var(--st-bronze);
+  }
+}
+
+.slot-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15em;
+  padding: 0 0.3em 0.8em;
+  text-align: center;
+}
+
+.slot-name {
+  font-size: clamp(1rem, 2.2vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+.slot-time {
+  font-size: clamp(0.95rem, 1.8vw, 2rem);
+  font-weight: 700;
+  color: var(--medal);
+}
+
+.slot-sub {
+  font-size: 0.8em;
+  color: var(--st-muted);
+}
+
+// Escalón
+.block {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.3em;
+  border-radius: 14px 14px 0 0;
+  border: 1px solid color-mix(in srgb, var(--medal) 55%, transparent);
+  border-bottom: none;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--medal) 38%, transparent), transparent 90%),
+    var(--st-surface);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--medal) 70%, transparent);
+
+  span {
+    font-size: clamp(2.2rem, 6vw, 6.5rem);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--medal);
+    text-shadow: 0 4px 24px color-mix(in srgb, var(--medal) 45%, transparent);
+  }
+}
+
+.slot-0 .block {
+  height: clamp(130px, 24vh, 300px);
+}
+.slot-1 .block {
+  height: clamp(95px, 17vh, 215px);
+}
+.slot-2 .block {
+  height: clamp(70px, 12vh, 150px);
+}
+
+// Primer puesto: trofeo y nombre destacados.
+.slot-0 {
+  .slot-name {
+    font-size: clamp(1.2rem, 3.2vw, 3.6rem);
+    background: linear-gradient(180deg, #fff 30%, #ffe3a1);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .block {
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--medal) 70%, transparent),
+      0 0 60px rgba(242, 193, 78, 0.18);
+  }
+}
+
+.trophy {
+  display: grid;
+  place-items: center;
+  width: clamp(52px, 5vw, 92px);
+  height: clamp(52px, 5vw, 92px);
+  margin-bottom: 0.3em;
+  border-radius: 50%;
+  color: #3a2800;
+  background: radial-gradient(circle at 35% 30%, #ffe8a3, var(--st-gold) 60%, #b8860b);
+  box-shadow: 0 0 40px rgba(242, 193, 78, 0.45);
+  animation: glow 3s ease-in-out infinite;
+}
+
+.leader-label {
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-gold);
+}
+
+/* ---------- Revelado del podio ---------- */
+.podium {
+  position: relative;
+}
+
+.card-area {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.reveal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 100%;
+
+  &.concealed {
+    visibility: hidden;
+  }
+}
+
+.mystery-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 9em);
+  margin: 0 auto;
+  border-radius: 14px;
+  border: 1px dashed color-mix(in srgb, var(--medal) 45%, transparent);
+  background: color-mix(in srgb, var(--medal) 8%, transparent);
+
+  span {
+    font-size: 2.6em;
+    font-weight: 800;
+    line-height: 1;
+    color: color-mix(in srgb, var(--medal) 70%, var(--st-text));
+    animation: mystery-pulse 1.8s ease-in-out infinite;
+  }
+}
+
+.slot-0 .mystery-card span {
+  font-size: 3.4em;
+}
+
+.trophy.dim {
+  filter: grayscale(1);
+  opacity: 0.35;
+  box-shadow: none;
+  animation: none;
+}
+
+.slot.mystery .block span {
+  opacity: 0.55;
+}
+
+// Recién desvelado: la tarjeta gira hacia el público y el escalón destella.
+.just-revealed {
+  .reveal-card {
+    animation: flip-in 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+
+  .block {
+    animation: block-flash 1.2s ease-out both;
+  }
+}
+
+.slot-0.just-revealed {
+  .trophy {
+    animation: trophy-in 1s cubic-bezier(0.2, 0.9, 0.3, 1.3) both, glow 3s 1s ease-in-out infinite;
+  }
+
+  .slot-name {
+    animation: winner-pop 1.1s 0.2s ease-out both;
+  }
+}
+
+// Suspense antes de desvelar al ganador.
+.slot.suspense {
+  .block {
+    animation: suspense-shake 0.5s ease-in-out infinite;
+  }
+
+  .mystery-card span {
+    animation: mystery-pulse 0.5s ease-in-out infinite;
+  }
+}
+
+.confetti {
+  position: absolute;
+  inset: -40% 0 -10%;
+  overflow: hidden;
+  pointer-events: none;
+
+  i {
+    position: absolute;
+    top: -6%;
+    width: 9px;
+    height: 16px;
+    border-radius: 2px;
+    opacity: 0;
+    transform: rotate(var(--r, 0deg));
+    animation-name: confetti-fall;
+    animation-timing-function: cubic-bezier(0.25, 0.4, 0.5, 1);
+    animation-fill-mode: forwards;
+  }
+}
+
+// Columnas de tiempo total y posición al desvelarse.
+.reveal-col {
+  animation: col-in 0.9s ease-out both;
+}
+
+@keyframes mystery-pulse {
+  50% {
+    opacity: 0.45;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes flip-in {
+  from {
+    opacity: 0;
+    transform: perspective(600px) rotateX(-90deg) scale(0.8);
+  }
+}
+
+@keyframes block-flash {
+  0% {
+    filter: brightness(2.2);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+@keyframes trophy-in {
+  from {
+    opacity: 0;
+    transform: scale(0.2) rotate(-30deg);
+  }
+}
+
+@keyframes winner-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes suspense-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--r, 0deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(95vh) rotate(calc(var(--r, 0deg) + 720deg));
+  }
+}
+
+@keyframes col-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+/* ---------- Tabla ---------- */
+.table-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scroller {
+  overflow-x: auto;
+  scrollbar-color: var(--st-border) transparent;
+  border-radius: 18px;
+  border: 1px solid var(--st-border);
+  background: var(--st-surface);
+  -webkit-overflow-scrolling: touch;
+
+  &:focus-visible {
+    outline: 2px solid var(--st-primary);
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  @include tabular;
+}
+
+th,
+td {
+  padding: 0.75em 0.9em;
+  border-bottom: 1px solid var(--st-border);
+  text-align: center;
+  white-space: nowrap;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--st-surface-2);
+  font-size: 0.78em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--st-muted);
+  vertical-align: bottom;
+}
+
+tbody tr:last-child > * {
+  border-bottom: none;
+}
+
+// Columnas fijas: grupo a la izquierda; total y posición a la derecha.
+.col-group {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  background: var(--st-surface);
+  min-width: 9em;
+  max-width: 16em;
+  box-shadow: 1px 0 0 var(--st-border);
+}
+
+thead .col-group {
+  z-index: 3;
+  background: var(--st-surface-2);
+}
+
+.col-total {
+  min-width: 6.5em;
+  background: var(--st-surface-2);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 1.1em;
+  box-shadow: -1px 0 0 var(--st-border);
+}
+
+.col-pos {
+  min-width: 5em;
+  background: var(--st-surface-2);
+}
+
+// En pantallas anchas, total y posición quedan fijos a la derecha
+// aunque haya muchas pruebas y la tabla se desplace horizontalmente.
+@include up($bp-md) {
+  .col-total {
+    position: sticky;
+    right: var(--pos-w);
+    z-index: 1;
+  }
+
+  .col-pos {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    width: var(--pos-w);
+    min-width: var(--pos-w);
+    max-width: var(--pos-w);
+  }
+}
+
+thead .col-total,
+thead .col-pos {
+  z-index: 3;
+  font-family: inherit;
+  font-size: 0.78em;
+}
+
+.test-name {
+  display: block;
+  max-width: 11em;
+  margin: 0 auto;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.test-max {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.85em;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.75;
+}
+
+.group-name {
+  display: block;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-sub {
+  font-size: 0.75em;
+  color: var(--st-muted);
+}
+
+.cell-score {
+  display: block;
+  font-family: var(--font-mono);
+  font-weight: 650;
+}
+
+.cell-time {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72em;
+  color: var(--st-muted);
+}
+
+.cell-empty {
+  color: var(--st-border);
+  font-weight: 700;
+}
+
+td.best .cell-score {
+  color: var(--st-accent);
+}
+
+.pos-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.4em;
+  height: 2.4em;
+  padding: 0 0.4em;
+  border-radius: 0.7em;
+  background: var(--st-surface);
+  border: 1px solid var(--st-border);
+  font-weight: 800;
+}
+
+.tie {
+  display: block;
+  font-size: 0.68em;
+  color: var(--st-muted);
+}
+
+// Top 3
+tr.gold,
+tr.silver,
+tr.bronze {
+  --medal: var(--st-gold);
+
+  .col-group {
+    box-shadow:
+      inset 4px 0 0 var(--medal),
+      1px 0 0 var(--st-border);
+  }
+
+  .pos-badge {
+    background: var(--medal);
+    border-color: transparent;
+    color: #1b1403;
+  }
+
+  .col-total {
+    color: var(--medal);
+  }
+}
+
+tr.silver {
+  --medal: var(--st-silver);
+}
+
+tr.bronze {
+  --medal: var(--st-bronze);
+}
+
+tr.gold > * {
+  background-image: linear-gradient(rgba(242, 193, 78, 0.07), rgba(242, 193, 78, 0.07));
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78em;
+  color: var(--st-muted);
+}
+
+.best-sample {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 12px;
+  border-radius: 3px;
+  background: var(--st-accent);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes glow {
+  50% {
+    box-shadow: 0 0 70px rgba(242, 193, 78, 0.65);
+  }
+}
+
+/* ---------- Proyector / escritorio: todo en una sola pantalla ----------
+ * La página ocupa exactamente el alto de la ventana: cabecera y podio se
+ * escalan con el alto disponible y la tabla se queda con el resto. Si hay
+ * tantos grupos que no caben, solo la tabla hace scroll (con cabecera fija).
+ */
+@media (min-width: 900px) and (min-height: 520px) {
+  :host {
+    height: var(--screen-h);
+    overflow: hidden;
+    font-size: clamp(13px, min(1vw, 1.8vh), 22px);
+  }
+
+  .stage {
+    height: var(--screen-h);
+    padding: clamp(10px, 2vh, 32px) clamp(16px, 2vw, 40px);
+    gap: clamp(8px, 1.6vh, 24px);
+  }
+
+  .bar {
+    flex: none;
+  }
+
+  .podium {
+    flex: none;
+    padding-top: 0;
+  }
+
+  .slot-info {
+    padding-bottom: 0.5em;
+    gap: 0;
+  }
+
+  .trophy {
+    width: clamp(36px, 6vh, 80px);
+    height: clamp(36px, 6vh, 80px);
+    margin-bottom: 0.2em;
+
+    app-icon {
+      transform: scale(0.8);
+    }
+  }
+
+  .slot-name {
+    font-size: clamp(1rem, min(2vw, 3.4vh), 2.4rem);
+  }
+
+  .slot-0 .slot-name {
+    font-size: clamp(1.2rem, min(3vw, 5vh), 3.4rem);
+  }
+
+  .slot-time {
+    font-size: clamp(0.95rem, min(1.6vw, 2.8vh), 2rem);
+  }
+
+  .block span {
+    font-size: clamp(2rem, min(5vw, 8vh), 6rem);
+  }
+
+  .slot-0 .block {
+    height: clamp(60px, 15vh, 230px);
+  }
+  .slot-1 .block {
+    height: clamp(45px, 10.5vh, 165px);
+  }
+  .slot-2 .block {
+    height: clamp(32px, 7.5vh, 115px);
+  }
+
+  .table-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 6px;
+  }
+
+  .scroller {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  // Con pocos grupos, las filas se reparten el alto disponible.
+  table {
+    height: 100%;
+  }
+
+  th,
+  td {
+    padding: clamp(3px, 0.9vh, 12px) 0.9em;
+  }
+
+  thead th {
+    padding-top: clamp(4px, 1vh, 12px);
+    padding-bottom: clamp(4px, 1vh, 12px);
+  }
+
+  .group-name {
+    display: inline;
+  }
+
+  .group-sub {
+    margin-left: 0.5em;
+  }
+
+  .pos-badge {
+    min-width: 2.1em;
+    height: 2.1em;
+  }
+
+  .legend {
+    flex: none;
+  }
+
+  // Las filas se compactan según el número de grupos para que quepan todos.
+  // --table-h ≈ alto que le queda a la tabla tras cabecera y podio.
+  .stage {
+    --table-h: 44vh;
+  }
+
+  // Alto de fila ≈ 2.5 × tamaño de letra (insignia de posición + relleno).
+  tbody {
+    font-size: max(12px, min(1em, calc(var(--table-h) / (var(--rows, 5) + 1.3) / 2.6)));
+    line-height: 1.2;
+  }
+
+  tbody .pos-badge {
+    min-width: 1.9em;
+    height: 1.9em;
+    border-radius: 0.55em;
+  }
+
+  tbody th,
+  tbody td {
+    padding-top: clamp(1px, 0.4vh, 12px);
+    padding-bottom: clamp(1px, 0.4vh, 12px);
+  }
+
+  // Penalización en la misma línea que el tiempo para no aumentar la altura de fila.
+  .cell-score {
+    display: inline;
+  }
+
+  .cell-time {
+    display: inline;
+    margin-left: 0.4em;
+  }
+
+  .tie {
+    display: inline;
+    margin-left: 0.3em;
+  }
+
+  // Muchos grupos: el podio cede espacio a la tabla.
+  .stage.dense {
+    --table-h: 62vh;
+
+    .trophy {
+      width: clamp(28px, 4.2vh, 56px);
+      height: clamp(28px, 4.2vh, 56px);
+    }
+
+    .leader-label {
+      font-size: 0.7em;
+    }
+
+    .slot-name {
+      font-size: clamp(0.9rem, min(1.6vw, 2.6vh), 2rem);
+    }
+
+    .slot-0 .slot-name {
+      font-size: clamp(1rem, min(2.4vw, 3.6vh), 2.6rem);
+    }
+
+    .slot-time {
+      font-size: clamp(0.85rem, min(1.3vw, 2.2vh), 1.6rem);
+    }
+
+    .slot-sub {
+      display: none;
+    }
+
+    .block span {
+      font-size: clamp(1.6rem, min(3.4vw, 5.4vh), 4rem);
+    }
+
+    .slot-0 .block {
+      height: clamp(40px, 9vh, 140px);
+    }
+    .slot-1 .block {
+      height: clamp(30px, 6.5vh, 100px);
+    }
+    .slot-2 .block {
+      height: clamp(22px, 4.5vh, 70px);
+    }
+  }
+}

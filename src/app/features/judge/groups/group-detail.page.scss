@@ -1,0 +1,52 @@
+.block {
+  display: block;
+}
+
+.participants {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.add-row {
+  display: flex;
+  gap: 8px;
+
+  .input {
+    flex: 1;
+  }
+
+  .btn {
+    padding: 0 14px;
+  }
+}
+
+.list-item.static {
+  cursor: default;
+
+  &:hover {
+    background: transparent;
+  }
+}
+
+.list-item > app-icon:last-child {
+  color: var(--text-faint);
+}
+
+.danger-zone {
+  align-self: center;
+  margin-top: 8px;
+}
+
+.mt {
+  margin-top: 12px;
+}

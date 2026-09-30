@@ -1,0 +1,40 @@
+.search {
+  position: relative;
+
+  app-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+  }
+
+  .input {
+    padding-left: 42px;
+  }
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.item-title,
+.item-sub {
+  display: block;
+}
+
+.list-item > app-icon {
+  color: var(--text-faint);
+}
+
+.inactive {
+  opacity: 0.6;
+}

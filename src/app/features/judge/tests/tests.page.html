@@ -1,0 +1,105 @@
+<div class="page">
+  <header class="page-head">
+    <h1>Pruebas</h1>
+    <button type="button" class="btn btn-primary btn-sm" (click)="openCreate()">
+      <app-icon name="plus" [size]="18" /> Nueva
+    </button>
+  </header>
+
+  @if (store.error(); as error) {
+    <app-error-state [message]="error" />
+  }
+
+  @if (store.loading()) {
+    <div class="stack-sm">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="skeleton" style="height: 92px"></div>
+      }
+    </div>
+  } @else {
+    @for (t of store.feed.tests(); track t.id; let i = $index, first = $first, last = $last) {
+      <article class="card test" [class.inactive]="!t.active">
+        <div class="order" aria-hidden="true">{{ i + 1 }}</div>
+        <div class="grow body">
+          <h2 class="truncate">{{ t.name }}</h2>
+          @if (!t.active) {
+            <div class="meta"><span class="badge badge-warning">Inactiva</span></div>
+          }
+          @if (t.description) {
+            <p class="desc small muted">{{ t.description }}</p>
+          }
+        </div>
+        <div class="actions">
+          <button type="button" class="icon-btn" (click)="move(i, -1)" [disabled]="first || busyId() !== null"
+                  [attr.aria-label]="'Subir ' + t.name">
+            <app-icon name="chevron-up" [size]="18" />
+          </button>
+          <button type="button" class="icon-btn" (click)="openEdit(t)" [attr.aria-label]="'Editar ' + t.name">
+            <app-icon name="edit" [size]="18" />
+          </button>
+          <button type="button" class="icon-btn" (click)="move(i, 1)" [disabled]="last || busyId() !== null"
+                  [attr.aria-label]="'Bajar ' + t.name">
+            <app-icon name="chevron-down" [size]="18" />
+          </button>
+        </div>
+        <label class="switch active-toggle">
+          <span class="small">{{ t.active ? 'Activa' : 'Inactiva' }}</span>
+          <input type="checkbox" [checked]="t.active" [disabled]="busyId() === t.id" (change)="toggleActive(t)"
+                 [attr.aria-label]="'Prueba ' + t.name + ' activa'" />
+        </label>
+      </article>
+    } @empty {
+      <app-empty-state icon="tests" heading="Todavía no hay pruebas"
+                       text="Crea las pruebas de la yincana: montaje, identificación de componentes, cableado…">
+        <button type="button" class="btn btn-primary" (click)="openCreate()">
+          <app-icon name="plus" [size]="18" /> Crear prueba
+        </button>
+      </app-empty-state>
+    }
+
+    @if (store.feed.tests().length > 0) {
+      <p class="hint">
+        Todas las pruebas se cronometran. Las inactivas no se pueden registrar y su tiempo no cuenta en el ranking
+        (los resultados se conservan).
+      </p>
+    }
+  }
+</div>
+
+<app-sheet [open]="editing() !== null" [heading]="editing() === 'new' ? 'Nueva prueba' : 'Editar prueba'"
+           (closed)="editing.set(null)">
+  <form class="stack" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <div class="field">
+      <label for="t-name">Nombre</label>
+      <input id="t-name" class="input" formControlName="name" [maxlength]="limits.name" autocomplete="off"
+             placeholder="p. ej. Montaje del ordenador" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <span class="field-error">El nombre es obligatorio.</span>
+      }
+    </div>
+    <div class="field">
+      <label for="t-desc">Descripción <span class="faint">(opcional)</span></label>
+      <textarea id="t-desc" class="textarea" formControlName="description" rows="3" [maxlength]="limits.description"
+                placeholder="Qué tiene que hacer el grupo y cuándo se para el cronómetro"></textarea>
+    </div>
+    <div class="field">
+      <label for="t-order">Orden</label>
+      <input id="t-order" class="input" type="number" inputmode="numeric" formControlName="order" min="0" />
+    </div>
+    <label class="switch">
+      <span>
+        <strong>Activa</strong>
+        <span class="hint block">Solo las pruebas activas se pueden registrar y cuentan en el ranking.</span>
+      </span>
+      <input type="checkbox" formControlName="active" />
+    </label>
+    <button type="submit" class="btn btn-primary btn-lg btn-block" [disabled]="saving()">
+      {{ saving() ? 'Guardando…' : editing() === 'new' ? 'Crear prueba' : 'Guardar cambios' }}
+    </button>
+    @if (editingTest(); as t) {
+      <button type="button" class="btn btn-danger-ghost btn-block" (click)="remove(t)" [disabled]="saving()">
+        <app-icon name="trash" [size]="18" /> Eliminar prueba
+      </button>
+    }
+  </form>
+</app-sheet>

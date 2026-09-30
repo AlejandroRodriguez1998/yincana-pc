@@ -1,0 +1,89 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+  min-height: 100dvh;
+}
+
+.bottom-nav {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 50;
+  padding-bottom: var(--safe-bottom);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+}
+
+.nav-inner {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  max-width: 560px;
+  height: var(--nav-height);
+  margin: 0 auto;
+
+  a,
+  button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+
+    &.active {
+      color: var(--primary);
+    }
+  }
+}
+
+// Acción principal: destaca por encima de la barra.
+.score {
+  position: relative;
+  color: var(--text) !important;
+
+  .score-btn {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin-top: -26px;
+    border-radius: 18px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 60%, var(--accent)));
+    box-shadow:
+      0 8px 20px color-mix(in srgb, var(--primary) 45%, transparent),
+      0 0 0 4px var(--bg);
+    transition: transform 0.12s;
+  }
+
+  &:active .score-btn {
+    transform: scale(0.94);
+  }
+}
+
+.menu-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 4px 14px;
+  color: var(--primary);
+
+  .item-title {
+    color: var(--text);
+  }
+}
+
+.mt {
+  margin-top: 12px;
+}
+
+.danger {
+  color: var(--danger);
+}

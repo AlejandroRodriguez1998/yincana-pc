@@ -1,0 +1,162 @@
+<div class="stage" [class.dense]="ranking().length > 8" [style.--rows]="ranking().length">
+  <header class="bar">
+    @if (mode() === 'fullscreen') {
+      <a routerLink="/ranking" class="bar-btn" aria-label="Volver al panel del juez">
+        <app-icon name="chevron-left" />
+      </a>
+    }
+    <div class="brand">
+      <span class="logo"><app-icon name="cpu" [size]="22" /></span>
+      <div>
+        <div class="brand-name">Yincana <span>PC</span></div>
+        <div class="brand-sub">{{ mode() === 'fullscreen' ? 'Resultados finales' : 'Ranking' }}</div>
+      </div>
+    </div>
+    <span class="live"><span class="dot"></span> En directo</span>
+    <app-reveal-toggle variant="chip" />
+    @if (mode() === 'embedded') {
+      <a routerLink="/resultados" class="bar-btn" aria-label="Abrir pantalla final (sin menú)" title="Pantalla final">
+        <app-icon name="monitor" />
+      </a>
+    } @else if (fullscreenSupported) {
+      <button type="button" class="bar-btn" (click)="toggleFullscreen()"
+              [attr.aria-label]="isFullscreen() ? 'Salir de pantalla completa' : 'Pantalla completa'">
+        <app-icon name="fullscreen" />
+      </button>
+    }
+  </header>
+
+  @if (feed.error(); as error) {
+    <p class="error" role="alert">{{ error }}</p>
+  }
+
+  @if (feed.loading()) {
+    <div class="loading" aria-live="polite">
+      <span class="spinner"></span> Cargando resultados…
+    </div>
+  } @else if (ranking().length === 0) {
+    <div class="empty">
+      <app-icon name="trophy" [size]="48" [stroke]="1.5" />
+      <h2>Todavía no hay grupos en competición</h2>
+    </div>
+  } @else {
+    <!-- Podio: 2º · 1º · 3º. Oculto ("?") hasta que un juez revela el ranking. -->
+    @if (podium().length > 0) {
+      <section class="podium" aria-label="Podio" aria-live="polite">
+        @for (e of podium(); track e.groupId; let i = $index) {
+          @let shown = placeShown(i);
+          <article
+            [class]="'slot slot-' + i + ' ' + medal(e.position)"
+            [class.mystery]="!shown"
+            [class.just-revealed]="shown && phase() === 'revealing'"
+            [class.suspense]="i === 0 && suspense()"
+          >
+            <div class="slot-info">
+              @if (i === 0) {
+                <div class="trophy" [class.dim]="!shown"><app-icon name="trophy" [size]="40" [stroke]="1.6" /></div>
+                <p class="leader-label">{{ shown ? leaderLabel() : 'Por revelar' }}</p>
+              }
+              <!-- La tarjeta real ocupa siempre su sitio (invisible si no está desvelada)
+                   para que los escalones no se muevan al revelar. -->
+              <div class="card-area">
+                <div class="reveal-card" [class.concealed]="!shown" [attr.aria-hidden]="!shown">
+                  <h2 class="slot-name">{{ e.name }}</h2>
+                  <p class="slot-time mono">{{ displayMs(i, e) | duration }}</p>
+                  <p class="slot-sub">{{ e.completed }}/{{ tests().length }} pruebas</p>
+                </div>
+                @if (!shown) {
+                  <div class="mystery-card" aria-label="Puesto sin revelar"><span>?</span></div>
+                }
+              </div>
+            </div>
+            <div class="block" aria-hidden="true"><span>{{ e.position }}</span></div>
+            @if (shown) {
+              <span class="sr-only">Posición {{ e.position }}: {{ e.name }}</span>
+            }
+          </article>
+        }
+        @if (confettiOn()) {
+          <div class="confetti" aria-hidden="true">
+            @for (c of confetti; track $index) {
+              <i
+                [style.left.%]="c.left"
+                [style.background]="c.color"
+                [style.animation-delay.s]="c.delay"
+                [style.animation-duration.s]="c.duration"
+                [style.--r.deg]="c.rotate"
+              ></i>
+            }
+          </div>
+        }
+      </section>
+    } @else {
+      <section class="not-started">
+        <app-icon name="timer" [size]="28" />
+        <p>La competición aún no ha empezado. ¡Mucha suerte a todos los grupos!</p>
+      </section>
+    }
+
+    <!-- Tabla completa. Sin revelar: orden alfabético y sin tiempo total ni posición. -->
+    <section class="table-wrap" [class.concealed-table]="concealed()" aria-label="Tabla de resultados">
+      <div class="scroller" tabindex="0" role="region" aria-label="Tabla de resultados, desplazable">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col" class="col-group">Grupo</th>
+              @for (t of tests(); track t.id) {
+                <th scope="col" class="col-test">
+                  <span class="test-name">{{ t.name }}</span>
+                </th>
+              }
+              @if (!concealed()) {
+                <th scope="col" class="col-total reveal-col">Tiempo total</th>
+                <th scope="col" class="col-pos reveal-col">Posición</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of tableRows(); track e.groupId) {
+              <tr [class]="concealed() ? '' : medal(e.position)">
+                <th scope="row" class="col-group">
+                  <span class="group-name">{{ e.name }}</span>
+                  <span class="group-sub">{{ e.completed }}/{{ tests().length }} pruebas</span>
+                </th>
+                @for (t of tests(); track t.id) {
+                  @let r = e.results[t.id];
+                  <td class="col-test" [class.best]="!concealed() && r && r.totalMs === bestByTest().get(t.id)">
+                    @if (r) {
+                      <span class="cell-score">{{ r.totalMs | duration }}</span>
+                      @if (r.penaltyMs > 0) {
+                        <span class="cell-time">+{{ r.penaltyMs | duration: false }} pen.</span>
+                      }
+                    } @else {
+                      <span class="cell-empty" aria-label="Sin registrar">—</span>
+                    }
+                  </td>
+                }
+                @if (!concealed()) {
+                  <td class="col-total reveal-col">{{ e.completed ? (e.totalMs | duration) : '—' }}</td>
+                  <td class="col-pos reveal-col">
+                    <span class="pos-badge">{{ e.position }}º</span>
+                    @if (e.tied) {
+                      <span class="tie">empate</span>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="legend">
+        @if (concealed()) {
+          <app-icon name="eye-off" [size]="14" />
+          Grupos en orden alfabético.
+        } @else {
+          Orden: más pruebas completadas y, entre iguales, menor tiempo total (penalizaciones incluidas).
+          <span class="best-sample"></span> Mejor tiempo de la prueba.
+        }
+      </p>
+    </section>
+  }
+</div>

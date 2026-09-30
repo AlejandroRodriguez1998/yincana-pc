@@ -1,0 +1,64 @@
+.test {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'order body actions'
+    'order toggle actions';
+  gap: 4px 12px;
+  padding: 12px 8px 8px 12px;
+
+  &.inactive {
+    opacity: 0.72;
+  }
+}
+
+.order {
+  grid-area: order;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.body {
+  grid-area: body;
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.desc {
+  margin-top: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.actions {
+  grid-area: actions;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.active-toggle {
+  grid-area: toggle;
+  justify-content: flex-start;
+  min-height: 40px;
+  color: var(--text-muted);
+}
+
+.block {
+  display: block;
+}

@@ -1,0 +1,119 @@
+<div class="page">
+  <header class="hello">
+    <div>
+      <p class="muted small">Panel del juez</p>
+      <h1>Hola, {{ auth.profile()?.displayName }}</h1>
+    </div>
+    <div class="chip-logo" aria-hidden="true"><app-icon name="cpu" [size]="22" /></div>
+  </header>
+
+  @if (store.error(); as error) {
+    <app-error-state [message]="error" />
+  }
+
+  <a routerLink="/juez/puntuar" class="score-cta">
+    <span class="cta-icon"><app-icon name="timer" [size]="28" /></span>
+    <span class="grow">
+      <strong>Registrar tiempo</strong>
+      <span class="cta-sub">Grupo → prueba → cronómetro → guardar</span>
+    </span>
+    <app-icon name="chevron-right" [size]="22" />
+  </a>
+
+  @if (store.loading()) {
+    <div class="grid-3">
+      <div class="skeleton stat-skeleton"></div>
+      <div class="skeleton stat-skeleton"></div>
+      <div class="skeleton stat-skeleton"></div>
+    </div>
+    <div class="skeleton" style="height: 180px"></div>
+  } @else {
+    <section class="grid-3" aria-label="Resumen">
+      <a routerLink="/juez/grupos" class="card stat">
+        <span class="stat-value tabular">{{ store.activeGroups().length }}</span>
+        <span class="stat-label">Grupos</span>
+        @if (store.groups().length !== store.activeGroups().length) {
+          <span class="stat-extra">{{ store.groups().length - store.activeGroups().length }} inactivos</span>
+        }
+      </a>
+      <a routerLink="/juez/pruebas" class="card stat">
+        <span class="stat-value tabular">{{ store.feed.activeTests().length }}</span>
+        <span class="stat-label">Pruebas</span>
+        @if (store.feed.tests().length !== store.feed.activeTests().length) {
+          <span class="stat-extra">
+            {{ store.feed.tests().length - store.feed.activeTests().length }} inactivas
+          </span>
+        }
+      </a>
+      <div class="card stat">
+        <span class="stat-value tabular">{{ store.progress().percent }}%</span>
+        <span class="stat-label">Progreso</span>
+        <span class="stat-extra">{{ store.progress().done }}/{{ store.progress().possible }}</span>
+      </div>
+    </section>
+
+    @if (store.progress().possible > 0) {
+      <section class="card card-pad stack-sm">
+        <div class="row-between">
+          <h2>Progreso por prueba</h2>
+          <span class="muted small tabular">{{ store.progress().done }}/{{ store.progress().possible }}</span>
+        </div>
+        <div class="progress" role="progressbar" aria-label="Progreso general"
+             [attr.aria-valuenow]="store.progress().percent" aria-valuemin="0" aria-valuemax="100">
+          <span [style.width.%]="store.progress().percent"></span>
+        </div>
+        <ul class="test-progress">
+          @for (item of store.progressByTest(); track item.test.id) {
+            <li>
+              <a [routerLink]="['/juez/puntuar']" [queryParams]="{ prueba: item.test.id }">
+                <span class="truncate grow">{{ item.test.name }}</span>
+                <span class="tabular muted small">{{ item.done }}/{{ item.total }}</span>
+                <span class="mini-bar"><span [style.width.%]="item.total ? (item.done / item.total) * 100 : 0"></span></span>
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
+    } @else {
+      <app-empty-state
+        icon="tests"
+        heading="Prepara la competición"
+        text="Crea al menos un grupo y una prueba activos para empezar a registrar tiempos."
+      >
+        <div class="row">
+          <a class="btn btn-outline btn-sm" routerLink="/juez/grupos">Grupos</a>
+          <a class="btn btn-outline btn-sm" routerLink="/juez/pruebas">Pruebas</a>
+        </div>
+      </app-empty-state>
+    }
+
+    <app-reveal-toggle />
+
+    @if (top().length > 0) {
+      <section class="stack-sm">
+        <div class="section-title">
+          <span>Top 3</span>
+          <a routerLink="/ranking" class="small">Ver ranking</a>
+        </div>
+        <app-ranking-list [entries]="top()" [totalTests]="store.feed.activeTests().length" label="Top 3" />
+      </section>
+    }
+  }
+
+  <section class="stack-sm">
+    <div class="section-title"><span>Accesos rápidos</span></div>
+    <div class="grid-2 shortcuts">
+      <a routerLink="/juez/grupos" class="card shortcut"><app-icon name="users" /> Grupos</a>
+      <a routerLink="/juez/pruebas" class="card shortcut"><app-icon name="tests" /> Pruebas</a>
+      <a routerLink="/ranking" class="card shortcut"><app-icon name="trophy" /> Ranking</a>
+      <a routerLink="/juez/historial" class="card shortcut"><app-icon name="history" /> Historial</a>
+      <a routerLink="/resultados" class="card shortcut"><app-icon name="monitor" /> Pantalla final</a>
+      <a routerLink="/juez/jueces" class="card shortcut"><app-icon name="shield" /> Jueces</a>
+    </div>
+  </section>
+
+  <button type="button" class="btn btn-ghost btn-sm tool" (click)="rebuild()" [disabled]="rebuilding()">
+    <app-icon name="refresh" [size]="16" />
+    {{ rebuilding() ? 'Recalculando…' : 'Recalcular clasificación' }}
+  </button>
+</div>

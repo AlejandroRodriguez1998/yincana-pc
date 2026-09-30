@@ -1,0 +1,171 @@
+<header class="topbar">
+  <div class="brand"><app-icon name="cpu" [size]="20" /> Yincana <span>PC</span></div>
+  @if (pwa.canInstall()) {
+    <button type="button" class="icon-btn" (click)="pwa.install()" aria-label="Instalar la app" title="Instalar la app">
+      <app-icon name="download" />
+    </button>
+  }
+  <button type="button" class="icon-btn" (click)="theme.toggle()"
+          [attr.aria-label]="theme.theme() === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'">
+    <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" />
+  </button>
+  <button type="button" class="icon-btn" (click)="logout()" aria-label="Cerrar sesión">
+    <app-icon name="logout" />
+  </button>
+</header>
+
+<div class="page">
+  @if (store.error(); as error) {
+    <app-error-state [message]="error" />
+  }
+
+  @if (store.loading()) {
+    <div class="skeleton" style="height: 190px; border-radius: 20px"></div>
+    <div class="grid-2">
+      <div class="skeleton" style="height: 110px"></div>
+      <div class="skeleton" style="height: 110px"></div>
+    </div>
+  } @else if (!store.group.value()) {
+    <app-empty-state icon="users" heading="Grupo no disponible"
+                     text="Tu grupo ya no existe o no tienes acceso. Habla con un juez." />
+  } @else {
+    @let group = store.group.value()!;
+    @let entry = store.entry();
+
+    <!-- Resumen principal -->
+    <section class="hero" aria-labelledby="group-name">
+      <div class="hero-top">
+        <div class="grow">
+          <p class="eyebrow">Tu grupo</p>
+          <h1 id="group-name">{{ group.name }}</h1>
+        </div>
+        @if (store.revealed() && entry) {
+          <div class="position" [class]="'position pos-' + entry.position" aria-label="Posición actual">
+            <span class="pos-label">Posición</span>
+            <strong>{{ entry.position }}º</strong>
+            <span class="pos-of">de {{ totalGroups() }}{{ entry.tied ? ' · empate' : '' }}</span>
+          </div>
+        } @else if (!store.revealed()) {
+          <div class="position hidden-pos" aria-label="Posición oculta hasta que los jueces la revelen">
+            <span class="pos-label">Posición</span>
+            <strong><app-icon name="eye-off" [size]="26" /></strong>
+            <span class="pos-of">{{ store.revealing() ? 'revelando…' : 'oculta' }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="hero-stats">
+        <div>
+          <span class="big mono">{{ store.done().length ? (store.totalMs() | duration) : '—' }}</span>
+          <span class="lbl">tiempo total</span>
+        </div>
+        <div>
+          <span class="big tabular">{{ store.done().length }}<small>/{{ store.cards().length }}</small></span>
+          <span class="lbl">pruebas</span>
+        </div>
+      </div>
+
+      <div class="progress hero-progress" role="progressbar" aria-label="Progreso de la competición"
+           [attr.aria-valuenow]="store.progress()" aria-valuemin="0" aria-valuemax="100">
+        <span [style.width.%]="store.progress()"></span>
+      </div>
+      <p class="hero-foot">
+        @if (!group.active) {
+          Tu grupo está inactivo: no aparece en el ranking.
+        } @else if (store.cards().length === 0) {
+          Todavía no hay pruebas publicadas.
+        } @else if (store.pending().length === 0) {
+          ¡Habéis completado todas las pruebas!
+        } @else {
+          {{ store.progress() }}% completado · te quedan {{ store.pending().length }}
+        }
+      </p>
+
+      @if (group.participants.length > 0) {
+        <ul class="members" aria-label="Participantes">
+          @for (p of group.participants; track p.id) {
+            <li>{{ p.name }}</li>
+          }
+        </ul>
+      }
+    </section>
+
+    <!-- Pruebas realizadas -->
+    @if (store.done().length > 0) {
+      <section class="stack-sm">
+        <div class="section-title"><span>Realizadas ({{ store.done().length }})</span></div>
+        <div class="cards">
+          @for (c of store.done(); track c.test.id) {
+            @let s = c.score!;
+            <article class="test-card done">
+              <div class="tc-head">
+                <span class="tc-check"><app-icon name="check" [size]="14" [stroke]="3" /></span>
+                <h3>{{ c.test.name }}</h3>
+              </div>
+              <div class="tc-score">
+                <app-icon name="timer" [size]="20" />
+                <strong class="mono">{{ s.totalMs | duration }}</strong>
+              </div>
+              <dl class="tc-details">
+                <div><dt>Cronometrado</dt><dd class="mono">{{ s.timeMs | duration }}</dd></div>
+                <div [class.pen]="s.penaltyMs > 0">
+                  <dt>Penalización</dt>
+                  <dd class="mono">{{ s.penaltyMs > 0 ? '+' + (s.penaltyMs | duration: false) : 'ninguna' }}</dd>
+                </div>
+              </dl>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- Pruebas pendientes -->
+    @if (store.pending().length > 0) {
+      <section class="stack-sm">
+        <div class="section-title"><span>Pendientes ({{ store.pending().length }})</span></div>
+        <div class="cards">
+          @for (c of store.pending(); track c.test.id) {
+            <article class="test-card pending">
+              <div class="tc-head">
+                <span class="tc-dot"></span>
+                <h3>{{ c.test.name }}</h3>
+              </div>
+              @if (c.test.description) {
+                <p class="small muted tc-desc">{{ c.test.description }}</p>
+              }
+
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- Ranking: solo cuando los jueces lo revelan -->
+    @if (store.revealing()) {
+      <section class="locked revealing" aria-live="polite">
+        <app-icon name="trophy" [size]="22" />
+        <div>
+          <strong>¡Los jueces están revelando el podio!</strong>
+          <p class="small muted">Mira la pantalla: en unos segundos verás aquí tu posición y el ranking.</p>
+        </div>
+      </section>
+    } @else if (!store.revealed()) {
+      <section class="locked" aria-live="polite">
+        <app-icon name="eye-off" [size]="22" />
+        <div>
+          <strong>El ranking está oculto</strong>
+          <p class="small muted">Los jueces lo revelarán al final. Mientras tanto, aquí tienes tus tiempos.</p>
+        </div>
+      </section>
+    } @else if (store.feed.ranking().length > 0) {
+      <section class="stack-sm">
+        <div class="section-title">
+          <span>Ranking general</span>
+          <span class="live small"><span class="dot"></span> En directo</span>
+        </div>
+        <app-ranking-list [entries]="store.feed.ranking()" [totalTests]="store.cards().length" [highlightId]="store.groupId" />
+        <p class="hint">Orden: más pruebas completadas y, entre iguales, menor tiempo total (penalizaciones incluidas).</p>
+      </section>
+    }
+  }
+</div>

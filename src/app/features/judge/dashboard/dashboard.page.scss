@@ -1,0 +1,149 @@
+@use 'mixins' as *;
+
+.hello {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chip-logo {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.score-cta {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  border-radius: 20px;
+  color: #fff;
+  text-decoration: none;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 55%, var(--accent)) 100%);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 35%, transparent);
+  transition: transform 0.1s;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    @include pcb-texture(rgba(255, 255, 255, 0.12));
+    pointer-events: none;
+  }
+
+  &:active {
+    transform: scale(0.985);
+  }
+
+  strong {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+}
+
+.cta-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.cta-sub {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.stat-extra {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.stat-skeleton {
+  height: 84px;
+}
+
+.test-progress {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+.mini-bar {
+  width: 64px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 99px;
+  background: var(--surface-3);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+  }
+}
+
+.shortcut {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 14px;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+
+  app-icon {
+    color: var(--primary);
+  }
+}
+
+.tool {
+  align-self: center;
+  color: var(--text-muted);
+}

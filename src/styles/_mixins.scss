@@ -1,0 +1,26 @@
+// Utilidades SCSS compartidas por los componentes (@use 'mixins' as *).
+$bp-sm: 600px;
+$bp-md: 900px;
+$bp-lg: 1200px;
+
+@mixin up($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}
+
+@mixin focus-ring {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@mixin tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+// Textura sutil de placa base (rejilla de puntos).
+@mixin pcb-texture($color: var(--grid-dot)) {
+  background-image: radial-gradient($color 1px, transparent 1px);
+  background-size: 14px 14px;
+}

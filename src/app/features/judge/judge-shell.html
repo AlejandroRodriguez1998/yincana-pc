@@ -1,0 +1,82 @@
+<router-outlet />
+
+<nav class="bottom-nav" aria-label="Navegación del juez">
+  <div class="nav-inner">
+    <a routerLink="/juez" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      <app-icon name="home" />
+      <span>Inicio</span>
+    </a>
+    <a routerLink="/ranking" routerLinkActive="active">
+      <app-icon name="trophy" />
+      <span>Ranking</span>
+    </a>
+    <a routerLink="/juez/puntuar" routerLinkActive="active" class="score" aria-label="Registrar tiempo">
+      <span class="score-btn"><app-icon name="timer" [size]="24" /></span>
+      <span>Registrar</span>
+    </a>
+    <a routerLink="/juez/grupos" routerLinkActive="active">
+      <app-icon name="users" />
+      <span>Grupos</span>
+    </a>
+    <button type="button" (click)="menuOpen.set(true)" [attr.aria-expanded]="menuOpen()">
+      <app-icon name="menu" />
+      <span>Más</span>
+    </button>
+  </div>
+</nav>
+
+<app-sheet [open]="menuOpen()" heading="Más opciones" (closed)="closeMenu()">
+  <div class="menu-user">
+    <app-icon name="shield" />
+    <div>
+      <div class="item-title">{{ auth.profile()?.displayName }}</div>
+      <div class="item-sub">Juez · {{ auth.profile()?.username }}</div>
+    </div>
+  </div>
+  <ul class="list">
+    <li>
+      <a class="list-item" routerLink="/juez/pruebas" (click)="closeMenu()">
+        <app-icon name="tests" /> <span class="grow">Pruebas</span>
+        <app-icon name="chevron-right" [size]="18" />
+      </a>
+    </li>
+    <li>
+      <a class="list-item" routerLink="/juez/historial" (click)="closeMenu()">
+        <app-icon name="history" /> <span class="grow">Historial de cambios</span>
+        <app-icon name="chevron-right" [size]="18" />
+      </a>
+    </li>
+    <li>
+      <a class="list-item" routerLink="/juez/jueces" (click)="closeMenu()">
+        <app-icon name="shield" /> <span class="grow">Jueces</span>
+        <app-icon name="chevron-right" [size]="18" />
+      </a>
+    </li>
+    <li>
+      <a class="list-item" routerLink="/resultados" (click)="closeMenu()">
+        <app-icon name="monitor" /> <span class="grow">Pantalla final <span class="item-sub">(sin menú, para proyector)</span></span>
+        <app-icon name="chevron-right" [size]="18" />
+      </a>
+    </li>
+  </ul>
+  <ul class="list mt">
+    <li>
+      <button type="button" class="list-item" (click)="theme.toggle()">
+        <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" />
+        <span class="grow">{{ theme.theme() === 'dark' ? 'Tema claro' : 'Tema oscuro' }}</span>
+      </button>
+    </li>
+    @if (pwa.canInstall()) {
+      <li>
+        <button type="button" class="list-item" (click)="pwa.install(); closeMenu()">
+          <app-icon name="download" /> <span class="grow">Instalar la app</span>
+        </button>
+      </li>
+    }
+    <li>
+      <button type="button" class="list-item danger" (click)="logout()">
+        <app-icon name="logout" /> <span class="grow">Cerrar sesión</span>
+      </button>
+    </li>
+  </ul>
+</app-sheet>

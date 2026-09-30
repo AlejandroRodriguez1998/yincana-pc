@@ -1,0 +1,81 @@
+<div class="page">
+  <header class="page-head">
+    <h1>Grupos</h1>
+    <button type="button" class="btn btn-primary btn-sm" (click)="openCreate()">
+      <app-icon name="plus" [size]="18" /> Nuevo
+    </button>
+  </header>
+
+  @if (store.error(); as error) {
+    <app-error-state [message]="error" />
+  }
+
+  @if (store.loading()) {
+    <div class="stack-sm">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="skeleton" style="height: 62px"></div>
+      }
+    </div>
+  } @else if (store.groups().length === 0) {
+    <app-empty-state icon="users" heading="Todavía no hay grupos" text="Crea los grupos que participarán en la yincana.">
+      <button type="button" class="btn btn-primary" (click)="openCreate()">
+        <app-icon name="plus" [size]="18" /> Crear grupo
+      </button>
+    </app-empty-state>
+  } @else {
+    @if (store.groups().length > 6) {
+      <label class="search">
+        <app-icon name="search" [size]="18" />
+        <span class="sr-only">Buscar grupo</span>
+        <input class="input" type="search" placeholder="Buscar grupo…" [value]="search()" (input)="search.set(value($event))" />
+      </label>
+    }
+
+    <p class="muted small">
+      {{ store.activeGroups().length }} activos · {{ store.groups().length }} en total
+    </p>
+
+    <ul class="list">
+      @for (g of filtered(); track g.id) {
+        <li>
+          <a class="list-item" [routerLink]="['/juez/grupos', g.id]" [class.inactive]="!g.active">
+            <span class="avatar" aria-hidden="true">{{ g.name.charAt(0).toUpperCase() }}</span>
+            <span class="grow">
+              <span class="item-title">{{ g.name }}</span>
+              <span class="item-sub">
+                {{ g.participants.length }} participantes ·
+                {{ store.completedByGroup().get(g.id) ?? 0 }}/{{ store.feed.activeTests().length }} pruebas
+              </span>
+            </span>
+            @if (!g.active) {
+              <span class="badge">Inactivo</span>
+            }
+            <app-icon name="chevron-right" [size]="18" />
+          </a>
+        </li>
+      } @empty {
+        <li class="list-item muted">Ningún grupo coincide con la búsqueda.</li>
+      }
+    </ul>
+  }
+</div>
+
+<app-sheet [open]="creating()" heading="Nuevo grupo" (closed)="creating.set(false)">
+  <form class="stack" [formGroup]="form" (ngSubmit)="create()" novalidate>
+    <div class="field">
+      <label for="group-name">Nombre</label>
+      <input id="group-name" class="input" formControlName="name" [maxlength]="nameMax" autocomplete="off" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <span class="field-error">Escribe un nombre (máx. {{ nameMax }} caracteres).</span>
+      }
+    </div>
+    <div class="field">
+      <label for="group-participants">Participantes <span class="faint">(opcional, uno por línea)</span></label>
+      <textarea id="group-participants" class="textarea" formControlName="participants" rows="4"
+                placeholder="Ana García&#10;Luis Pérez"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg btn-block" [disabled]="saving()">
+      {{ saving() ? 'Creando…' : 'Crear grupo' }}
+    </button>
+  </form>
+</app-sheet>

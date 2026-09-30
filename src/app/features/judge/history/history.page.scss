@@ -1,0 +1,58 @@
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entry {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.entry-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.action-create .entry-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.action-update .entry-icon {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.action-delete .entry-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0;
+  font-variant-numeric: tabular-nums;
+
+  .old {
+    color: var(--text-faint);
+    text-decoration: line-through;
+  }
+
+  .new {
+    font-weight: 600;
+  }
+}

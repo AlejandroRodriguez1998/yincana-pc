@@ -1,0 +1,61 @@
+.stopwatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s, background-color 0.2s;
+
+  &.running {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface-2));
+  }
+}
+
+.readout {
+  font-size: clamp(2.6rem, 13vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: blink 1s ease-in-out infinite;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.grow {
+  flex: 1;
+}
+
+.btn-warning {
+  background: var(--warning);
+  color: #fff;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.3;
+  }
+}

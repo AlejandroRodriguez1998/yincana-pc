@@ -1,0 +1,71 @@
+<div class="page">
+  <header class="page-head">
+    <h1>Historial</h1>
+    <button type="button" class="icon-btn" (click)="refresh()" aria-label="Actualizar historial" [disabled]="loading()">
+      <app-icon name="refresh" />
+    </button>
+  </header>
+
+  <div class="field">
+    <label for="filter">Filtrar por grupo</label>
+    <select id="filter" class="select" (change)="setFilter($event)">
+      <option value="">Todos los grupos</option>
+      @for (g of store.groups(); track g.id) {
+        <option [value]="g.id" [selected]="groupFilter() === g.id">{{ g.name }}</option>
+      }
+    </select>
+  </div>
+
+  @if (error(); as err) {
+    <app-error-state [message]="err" />
+  }
+
+  @if (loading()) {
+    <div class="stack-sm">
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+        <div class="skeleton" style="height: 78px"></div>
+      }
+    </div>
+  } @else if (entries().length === 0 && !error()) {
+    <app-empty-state icon="history" heading="Sin cambios registrados"
+                     text="Aquí aparecerá cada tiempo registrado, modificado o eliminado." />
+  } @else {
+    <ol class="timeline">
+      @for (e of entries(); track e.id) {
+        <li class="entry card" [class]="'entry card action-' + e.action">
+          <span class="entry-icon" aria-hidden="true"><app-icon [name]="actionIcon[e.action]" [size]="16" /></span>
+          <div class="grow">
+            <div class="row-between">
+              <strong class="truncate">
+                @switch (e.entityType) {
+                  @case ('score') { {{ e.groupName }} · {{ e.testName }} }
+                  @case ('group') { Grupo {{ e.groupName }} }
+                  @case ('test') { Prueba {{ e.testName }} }
+                }
+              </strong>
+              <span class="badge">{{ actionLabel[e.action] }}</span>
+            </div>
+            @if (e.entityType === 'score') {
+              <div class="change small">
+                @if (e.before) {
+                  <span class="old mono">{{ describeScore(e.before) }}</span>
+                  <app-icon name="chevron-right" [size]="14" />
+                }
+                <span class="new mono">{{ e.after ? describeScore(e.after) : 'eliminado' }}</span>
+              </div>
+            }
+            @if (e.note) {
+              <p class="small muted">{{ e.note }}</p>
+            }
+            <div class="item-sub">{{ e.actorName }} · {{ formatDate(e.at) }}</div>
+          </div>
+        </li>
+      }
+    </ol>
+    @if (hasMore()) {
+      <button type="button" class="btn btn-outline btn-block" (click)="loadMore()" [disabled]="loadingMore()">
+        {{ loadingMore() ? 'Cargando…' : 'Cargar más' }}
+      </button>
+    }
+  }
+</div>

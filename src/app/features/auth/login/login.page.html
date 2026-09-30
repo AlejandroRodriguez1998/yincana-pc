@@ -1,0 +1,81 @@
+<main class="login">
+  <button
+    type="button"
+    class="icon-btn theme"
+    (click)="theme.toggle()"
+    [attr.aria-label]="theme.theme() === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+  >
+    <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" />
+  </button>
+
+  <div class="brand">
+    <div class="logo"><app-icon name="cpu" [size]="34" [stroke]="1.8" /></div>
+    <h1>Yincana <span>PC</span></h1>
+    <p class="muted">Competición de montaje de ordenadores</p>
+  </div>
+
+  <form class="card card-pad stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="field">
+      <label for="username">Usuario</label>
+      <input
+        id="username"
+        class="input"
+        formControlName="username"
+        autocomplete="username"
+        autocapitalize="none"
+        spellcheck="false"
+        placeholder="p. ej. grupo-1"
+      />
+      @if (form.controls.username.touched && form.controls.username.invalid) {
+        <span class="field-error">Introduce tu usuario.</span>
+      }
+    </div>
+
+    <div class="field">
+      <label for="password">Contraseña</label>
+      <div class="password">
+        <input
+          id="password"
+          class="input"
+          formControlName="password"
+          [type]="showPassword() ? 'text' : 'password'"
+          autocomplete="current-password"
+        />
+        <button
+          type="button"
+          class="icon-btn"
+          (click)="showPassword.set(!showPassword())"
+          [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+        >
+          <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" />
+        </button>
+      </div>
+      @if (form.controls.password.touched && form.controls.password.invalid) {
+        <span class="field-error">Introduce la contraseña.</span>
+      }
+    </div>
+
+    @if (error(); as message) {
+      <div class="form-error" role="alert">
+        <app-icon name="alert" [size]="18" />
+        <span>{{ message }}</span>
+      </div>
+    }
+
+    <button type="submit" class="btn btn-primary btn-lg btn-block" [disabled]="submitting()">
+      @if (submitting()) {
+        <span class="spinner" aria-hidden="true"></span> Entrando…
+      } @else {
+        Entrar
+      }
+    </button>
+  </form>
+
+  <p class="hint center">Los jueces facilitan el usuario y la contraseña de cada grupo.</p>
+
+  @if (pwa.canInstall()) {
+    <button type="button" class="btn btn-ghost btn-sm install" (click)="pwa.install()">
+      <app-icon name="download" [size]="16" /> Instalar la app en este dispositivo
+    </button>
+  }
+</main>

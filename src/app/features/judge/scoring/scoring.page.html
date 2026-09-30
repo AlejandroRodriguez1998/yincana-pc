@@ -1,0 +1,251 @@
+<div class="page">
+  <header class="page-head">
+    <h1>Registrar tiempo</h1>
+    <ol class="steps" aria-label="Pasos">
+      <li [class.done]="step() !== 'group'" [attr.aria-current]="step() === 'group' ? 'step' : null">1</li>
+      <li [class.done]="step() === 'form'" [attr.aria-current]="step() === 'test' ? 'step' : null">2</li>
+      <li [attr.aria-current]="step() === 'form' ? 'step' : null">3</li>
+    </ol>
+  </header>
+
+  @if (store.error(); as error) {
+    <app-error-state [message]="error" />
+  }
+
+  <!-- Selección actual (siempre visible, se puede cambiar con un toque) -->
+  @if (group() || test()) {
+    <div class="selection">
+      @if (group(); as g) {
+        <button type="button" class="pick" (click)="changeGroup()" aria-label="Cambiar grupo">
+          <app-icon name="users" [size]="16" />
+          <span class="truncate">{{ g.name }}</span>
+          <app-icon name="x" [size]="14" />
+        </button>
+      }
+      @if (test(); as t) {
+        <button type="button" class="pick" (click)="changeTest()" aria-label="Cambiar prueba">
+          <app-icon name="tests" [size]="16" />
+          <span class="truncate">{{ t.name }}</span>
+          @if (pinnedTestId() === t.id) {
+            <app-icon name="pin" [size]="14" />
+          }
+          <app-icon name="x" [size]="14" />
+        </button>
+      }
+    </div>
+  }
+
+  @if (store.loading()) {
+    <div class="stack-sm">
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+        <div class="skeleton" style="height: 60px"></div>
+      }
+    </div>
+  } @else {
+    @switch (step()) {
+      <!-- PASO 1: GRUPO -->
+      @case ('group') {
+        <section class="stack-sm" aria-labelledby="step-group">
+          <h2 id="step-group" class="step-title">Elige el grupo</h2>
+          @if (store.activeGroups().length === 0) {
+            <app-empty-state icon="users" heading="No hay grupos activos" text="Crea o activa grupos para poder registrar sus tiempos.">
+              <a routerLink="/juez/grupos" class="btn btn-primary btn-sm">Ir a grupos</a>
+            </app-empty-state>
+          } @else {
+            @if (store.activeGroups().length > 6) {
+              <label class="search">
+                <app-icon name="search" [size]="18" />
+                <span class="sr-only">Buscar grupo</span>
+                <input
+                  class="input"
+                  type="search"
+                  placeholder="Buscar grupo…"
+                  [value]="search()"
+                  (input)="search.set(value($event))"
+                />
+              </label>
+            }
+            <div class="group-grid">
+              @for (g of filteredGroups(); track g.id) {
+                @let r = test() ? store.result(g.id, test()!.id) : null;
+                <button type="button" class="choice" [class.scored]="!!r" (click)="selectGroup(g)">
+                  <span class="choice-name">{{ g.name }}</span>
+                  @if (test()) {
+                    @if (r) {
+                      <span class="badge badge-success mono"><app-icon name="check" [size]="12" /> {{ r.totalMs | duration }}</span>
+                    } @else {
+                      <span class="badge">Pendiente</span>
+                    }
+                  } @else {
+                    <span class="choice-meta tabular">
+                      {{ store.completedByGroup().get(g.id) ?? 0 }}/{{ store.feed.activeTests().length }} pruebas
+                    </span>
+                  }
+                </button>
+              } @empty {
+                <p class="muted small">Ningún grupo coincide con "{{ search() }}".</p>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      <!-- PASO 2: PRUEBA -->
+      @case ('test') {
+        <section class="stack-sm" aria-labelledby="step-test">
+          <h2 id="step-test" class="step-title">Elige la prueba</h2>
+          @if (store.feed.activeTests().length === 0) {
+            <app-empty-state icon="tests" heading="No hay pruebas activas" text="Crea o activa pruebas para poder registrar tiempos.">
+              <a routerLink="/juez/pruebas" class="btn btn-primary btn-sm">Ir a pruebas</a>
+            </app-empty-state>
+          }
+          @for (t of store.feed.activeTests(); track t.id) {
+            @let r = store.result(group()!.id, t.id);
+            <button type="button" class="test-choice card" [class.scored]="!!r" (click)="selectTest(t)">
+              <span class="grow">
+                <span class="choice-name">{{ t.name }}</span>
+                @if (t.description) {
+                  <span class="choice-meta truncate">{{ t.description }}</span>
+                }
+              </span>
+              @if (r) {
+                <span class="badge badge-success mono"><app-icon name="check" [size]="12" /> {{ r.totalMs | duration }}</span>
+              } @else {
+                <span class="badge">Pendiente</span>
+              }
+              <app-icon name="chevron-right" [size]="18" />
+            </button>
+          }
+        </section>
+      }
+
+      <!-- PASO 3: TIEMPO -->
+      @case ('form') {
+        @let t = test()!;
+        <form class="stack score-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+          <div class="row-between">
+            @if (loadingExisting()) {
+              <span class="badge"><span class="spinner tiny"></span> Cargando resultado…</span>
+            } @else if (existing(); as e) {
+              <span class="badge badge-warning">
+                <app-icon name="edit" [size]="12" /> Editando · antes <span class="mono">{{ e.totalMs | duration }}</span>
+              </span>
+            } @else {
+              <span class="badge badge-primary">Nuevo resultado</span>
+            }
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm pin-btn"
+              [class.pinned]="pinnedTestId() === t.id"
+              [attr.aria-pressed]="pinnedTestId() === t.id"
+              (click)="togglePin(t)"
+            >
+              <app-icon name="pin" [size]="16" /> {{ pinnedTestId() === t.id ? 'Fijada' : 'Fijar prueba' }}
+            </button>
+          </div>
+
+          @if (loadError(); as err) {
+            <app-error-state [message]="err" />
+          }
+
+          @if (t.description) {
+            <p class="muted small description">{{ t.description }}</p>
+          }
+
+          <!-- Cronómetro -->
+          <div class="field">
+            <span class="label">Tiempo</span>
+            <app-stopwatch [storageKey]="comboKey()!" (captured)="onCaptured($event)" />
+            <div class="time-row">
+              @if (editingTime()) {
+                <input
+                  class="input"
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="m:ss.d"
+                  aria-label="Tiempo manual"
+                  [value]="timeText()"
+                  (input)="timeText.set(value($event))"
+                  (keydown.enter)="$event.preventDefault(); commitTimeEdit()"
+                />
+                <button type="button" class="btn btn-outline btn-sm" (click)="commitTimeEdit()">OK</button>
+              } @else {
+                <span class="grow">
+                  Tiempo a guardar: <strong class="mono">{{ timeValue() | duration }}</strong>
+                </span>
+                <button type="button" class="icon-btn" (click)="startTimeEdit()" aria-label="Escribir el tiempo a mano">
+                  <app-icon name="edit" [size]="18" />
+                </button>
+                @if (timeValue() !== null) {
+                  <button type="button" class="icon-btn" (click)="clearTime()" aria-label="Quitar tiempo">
+                    <app-icon name="x" [size]="18" />
+                  </button>
+                }
+              }
+            </div>
+            @if (timeError(); as msg) {
+              <span class="field-error">{{ msg }}</span>
+            }
+          </div>
+
+          <!-- Penalización -->
+          <div class="field">
+            <label for="penalty">Penalización <span class="faint">(segundos que se suman)</span></label>
+            <div class="stepper compact">
+              <button type="button" class="btn btn-outline step-btn" (click)="addPenalty(-5)" aria-label="Quitar 5 segundos">
+                <app-icon name="minus" />
+              </button>
+              <input
+                id="penalty"
+                class="input"
+                type="number"
+                inputmode="numeric"
+                step="1"
+                min="0"
+                formControlName="penaltySeconds"
+                autocomplete="off"
+              />
+              <button type="button" class="btn btn-outline step-btn" (click)="addPenalty(5)" aria-label="Añadir 5 segundos">
+                <app-icon name="plus" />
+              </button>
+            </div>
+            <div class="quick">
+              <button type="button" class="btn btn-sm btn-outline" (click)="addPenalty(10)">+10 s</button>
+              <button type="button" class="btn btn-sm btn-outline" (click)="addPenalty(30)">+30 s</button>
+              <button type="button" class="btn btn-sm btn-outline" (click)="addPenalty(60)">+1 min</button>
+              @if (penaltyMs() > 0) {
+                <button type="button" class="btn btn-sm btn-ghost" (click)="resetPenalty()" aria-label="Quitar penalización">
+                  <app-icon name="x" [size]="16" />
+                </button>
+              }
+            </div>
+            @if (penaltyError(); as msg) {
+              <span class="field-error">{{ msg }}</span>
+            }
+          </div>
+
+          @if (existing()) {
+            <button type="button" class="btn btn-danger-ghost btn-sm remove" (click)="remove()" [disabled]="saving()">
+              <app-icon name="trash" [size]="16" /> Eliminar este resultado
+            </button>
+          }
+
+          <!-- Barra de guardado fija, al alcance del pulgar -->
+          <div class="save-bar">
+            <div class="final">
+              <span class="small muted">Total{{ penaltyMs() > 0 ? ' (+pen.)' : '' }}</span>
+              <strong class="mono">{{ totalPreview() | duration }}</strong>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg grow" [disabled]="saving() || loadingExisting()">
+              @if (saving()) {
+                <span class="spinner" aria-hidden="true"></span> Guardando…
+              } @else {
+                <app-icon name="check" /> Guardar
+              }
+            </button>
+          </div>
+        </form>
+      }
+    }
+  }
+</div>

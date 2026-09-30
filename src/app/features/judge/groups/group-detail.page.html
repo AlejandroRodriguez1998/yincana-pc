@@ -1,0 +1,166 @@
+<div class="page">
+  <header class="page-head">
+    <a routerLink="/juez/grupos" class="icon-btn" aria-label="Volver a grupos"><app-icon name="chevron-left" /></a>
+    <h1>{{ group()?.name ?? 'Grupo' }}</h1>
+    @if (group(); as g) {
+      <a class="btn btn-primary btn-sm" [routerLink]="['/juez/puntuar']" [queryParams]="{ grupo: g.id }">
+        <app-icon name="timer" [size]="16" /> Registrar
+      </a>
+    }
+  </header>
+
+  @if (store.loading()) {
+    <div class="skeleton" style="height: 220px"></div>
+    <div class="skeleton" style="height: 140px"></div>
+  } @else if (!group()) {
+    <app-empty-state icon="users" heading="Grupo no encontrado" text="Puede que se haya eliminado.">
+      <a routerLink="/juez/grupos" class="btn btn-outline btn-sm">Volver a grupos</a>
+    </app-empty-state>
+  } @else {
+    <!-- Datos y participantes: un único guardado = una única escritura -->
+    <form class="card card-pad stack" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div class="field">
+        <label for="name">Nombre del grupo</label>
+        <input id="name" class="input" formControlName="name" [maxlength]="nameMax" autocomplete="off" />
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <span class="field-error">El nombre es obligatorio.</span>
+        }
+      </div>
+
+      <label class="switch">
+        <span>
+          <strong>Activo</strong>
+          <span class="hint block">Un grupo inactivo no se puede registrar ni aparece en el ranking.</span>
+        </span>
+        <input type="checkbox" formControlName="active" />
+      </label>
+
+      <div class="field">
+        <span class="label">Participantes ({{ participants.length }}/{{ participantsMax }})</span>
+        <ul class="participants" formArrayName="participants">
+          @for (p of participants.controls; track p.controls.id.value; let i = $index) {
+            <li [formGroupName]="i">
+              <input class="input" formControlName="name" [maxlength]="participantMax"
+                     [attr.aria-label]="'Participante ' + (i + 1)" />
+              <button type="button" class="icon-btn" (click)="removeParticipant(i)"
+                      [attr.aria-label]="'Quitar a ' + p.controls.name.value">
+                <app-icon name="x" [size]="18" />
+              </button>
+            </li>
+          } @empty {
+            <li class="muted small">Sin participantes todavía.</li>
+          }
+        </ul>
+        <div class="add-row">
+          <input class="input" [formControl]="newParticipant" placeholder="Nombre del participante"
+                 aria-label="Nuevo participante" [maxlength]="participantMax"
+                 (keydown.enter)="$event.preventDefault(); addParticipant()" />
+          <button type="button" class="btn btn-outline" (click)="addParticipant()" aria-label="Añadir participante">
+            <app-icon name="plus" />
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" [disabled]="saving() || form.pristine">
+        {{ saving() ? 'Guardando…' : form.pristine ? 'Sin cambios' : 'Guardar cambios' }}
+      </button>
+    </form>
+
+    <!-- Resultados -->
+    <section class="stack-sm">
+      <div class="section-title"><span>Resultados</span></div>
+      @if (results().length === 0) {
+        <p class="muted small">No hay pruebas activas.</p>
+      } @else {
+        <ul class="list">
+          @for (item of results(); track item.test.id) {
+            <li>
+              <a class="list-item" [routerLink]="['/juez/puntuar']" [queryParams]="{ grupo: group()!.id, prueba: item.test.id }">
+                <span class="grow">
+                  <span class="item-title block">{{ item.test.name }}</span>
+                  @if (item.result?.penaltyMs) {
+                    <span class="item-sub">incluye +{{ item.result?.penaltyMs | duration: false }} de penalización</span>
+                  }
+                </span>
+                @if (item.result; as r) {
+                  <strong class="mono">{{ r.totalMs | duration }}</strong>
+                } @else {
+                  <span class="badge">Pendiente</span>
+                }
+                <app-icon name="chevron-right" [size]="18" />
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <!-- Accesos -->
+    <section class="stack-sm">
+      <div class="section-title">
+        <span>Accesos del grupo</span>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="openAccess()">
+          <app-icon name="key" [size]="16" /> Crear acceso
+        </button>
+      </div>
+      @if (accountsError(); as err) {
+        <p class="field-error">{{ err }}</p>
+      } @else if (accountList() === null) {
+        <div class="skeleton" style="height: 56px"></div>
+      } @else {
+        <ul class="list">
+          @for (a of accountList(); track a.uid) {
+            <li class="list-item static">
+              <app-icon name="key" [size]="18" />
+              <span class="grow mono">{{ a.username }}</span>
+              <button type="button" class="btn btn-danger-ghost btn-sm" (click)="revoke(a)">Retirar</button>
+            </li>
+          } @empty {
+            <li class="list-item static muted small">
+              Sin accesos: el grupo aún no puede entrar a su zona.
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <button type="button" class="btn btn-danger-ghost danger-zone" (click)="remove()" [disabled]="deleting()">
+      <app-icon name="trash" [size]="18" /> {{ deleting() ? 'Eliminando…' : 'Eliminar grupo' }}
+    </button>
+  }
+</div>
+
+<app-sheet [open]="accessOpen()" heading="Crear acceso para el grupo" (closed)="accessOpen.set(false)">
+  @if (created(); as account) {
+    <app-credentials-card [username]="account.username" [password]="account.password" />
+    <button type="button" class="btn btn-primary btn-block mt" (click)="accessOpen.set(false)">Hecho</button>
+  } @else {
+    <form class="stack" [formGroup]="accessForm" (ngSubmit)="createAccess()" novalidate>
+      <p class="muted small">
+        Todos los miembros del grupo pueden usar el mismo usuario. Anota la contraseña: después no se puede consultar.
+      </p>
+      <div class="field">
+        <label for="acc-user">Usuario</label>
+        <input id="acc-user" class="input mono" formControlName="username" autocapitalize="none" spellcheck="false" autocomplete="off" />
+        @if (accessForm.controls.username.touched && accessForm.controls.username.invalid) {
+          <span class="field-error">3-30 caracteres: minúsculas, números, punto, guion o guion bajo.</span>
+        }
+      </div>
+      <div class="field">
+        <label for="acc-pass">Contraseña</label>
+        <div class="add-row">
+          <input id="acc-pass" class="input mono" formControlName="password" autocomplete="off" />
+          <button type="button" class="btn btn-outline" (click)="regeneratePassword()" aria-label="Generar otra contraseña">
+            <app-icon name="refresh" />
+          </button>
+        </div>
+        @if (accessForm.controls.password.touched && accessForm.controls.password.invalid) {
+          <span class="field-error">Mínimo 6 caracteres.</span>
+        }
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg btn-block" [disabled]="creatingAccess()">
+        {{ creatingAccess() ? 'Creando…' : 'Crear acceso' }}
+      </button>
+    </form>
+  }
+</app-sheet>
