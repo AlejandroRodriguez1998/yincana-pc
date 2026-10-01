@@ -29,8 +29,9 @@ export class App {
     effect(() => {
       const status = this.auth.status();
       untracked(() => {
-        const onLogin = this.router.url.startsWith('/login');
-        if ((status === 'signedOut' || status === 'noProfile') && !onLogin && this.router.navigated) {
+        const url = this.router.url;
+        const onPublicPage = url.startsWith('/login') || url === '/' || url.startsWith('/?');
+        if ((status === 'signedOut' || status === 'noProfile') && !onPublicPage && this.router.navigated) {
           void this.router.navigateByUrl('/login');
         }
       });

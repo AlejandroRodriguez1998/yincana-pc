@@ -1,0 +1,56 @@
+<div class="landing">
+  <header class="top">
+    <div class="brand"><span class="mini-logo"><app-icon name="cpu" [size]="18" /></span><span>Yincana <b>PC</b></span></div>
+    @if (pwa.canInstall()) {
+      <button type="button" class="icon-btn" (click)="pwa.install()" aria-label="Instalar la app" title="Instalar la app">
+        <app-icon name="download" />
+      </button>
+    }
+    <button
+      type="button"
+      class="icon-btn"
+      (click)="theme.toggle()"
+      [attr.aria-label]="theme.theme() === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+    >
+      <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" />
+    </button>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="chip-art" aria-hidden="true">
+        <svg viewBox="0 0 240 240" class="traces">
+          <path d="M120 20v40M80 20v20h-30v30M160 20v20h30v30M20 120h40M20 80h20v-30M20 160h20v30h30M220 120h-40M220 80h-20v-30M220 160h-20v30h-30M120 220v-40M80 220v-20M160 220v-20" />
+          <circle cx="120" cy="20" r="4" /><circle cx="50" cy="70" r="4" /><circle cx="190" cy="70" r="4" />
+          <circle cx="20" cy="120" r="4" /><circle cx="20" cy="50" r="4" /><circle cx="70" cy="190" r="4" />
+          <circle cx="220" cy="120" r="4" /><circle cx="220" cy="50" r="4" /><circle cx="170" cy="190" r="4" />
+          <circle cx="120" cy="220" r="4" /><circle cx="80" cy="220" r="4" /><circle cx="160" cy="220" r="4" />
+        </svg>
+        <div class="chip"><app-icon name="cpu" [size]="56" [stroke]="1.6" /></div>
+      </div>
+
+      <p class="eyebrow">Competición de montaje de ordenadores</p>
+      <h1 id="hero-title">Yincana <span>PC</span></h1>
+      <p class="lead">
+        Monta, conecta y arranca. Superad todas las pruebas en el menor tiempo posible y subid al podio.
+      </p>
+
+      <a routerLink="/login" class="btn btn-primary btn-lg cta">
+        Entrar <app-icon name="chevron-right" [size]="20" />
+      </a>
+      <p class="hint">Grupos y jueces entran con el usuario y la contraseña que facilita la organización.</p>
+    </section>
+
+    <section class="features" aria-label="Cómo funciona">
+      @for (f of features; track f.title; let i = $index) {
+        <article class="feature card" [style.animation-delay.ms]="120 + i * 90">
+          <span class="f-icon"><app-icon [name]="f.icon" [size]="22" /></span>
+          <h2>{{ f.title }}</h2>
+          <p>{{ f.text }}</p>
+        </article>
+      }
+    </section>
+  </main>
+
+  <footer class="foot">Yincana PC</footer>
+</div>

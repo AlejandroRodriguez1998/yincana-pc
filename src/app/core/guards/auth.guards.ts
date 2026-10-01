@@ -46,10 +46,10 @@ export const guestGuard: CanActivateFn = async () => {
   return status === 'ready' ? homeFor(router, auth.profile()?.role) : true;
 };
 
-/** Ruta raíz: redirige según el rol. */
-export const homeRedirectGuard: CanActivateFn = async () => {
+/** Ruta raíz: sin sesión muestra la página de inicio; con sesión, lleva a la zona del usuario. */
+export const landingGuard: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  await auth.whenResolved();
-  return homeFor(router, auth.profile()?.role);
+  const status = await auth.whenResolved();
+  return status === 'ready' ? homeFor(router, auth.profile()?.role) : true;
 };

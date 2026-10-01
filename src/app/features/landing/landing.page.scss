@@ -1,0 +1,229 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+  min-height: 100dvh;
+  background:
+    radial-gradient(900px 420px at 50% -10%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 70%),
+    radial-gradient(600px 300px at 100% 100%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
+    var(--bg);
+}
+
+.landing {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 12px 16px 24px;
+
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    @include pcb-texture;
+    pointer-events: none;
+    mask-image: radial-gradient(circle at 50% 30%, #000 0%, transparent 75%);
+  }
+
+  > * {
+    position: relative;
+  }
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.brand {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+
+  b {
+    color: var(--primary);
+  }
+}
+
+.mini-logo {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(28px, 6vh, 56px);
+  padding: clamp(16px, 4vh, 40px) 0;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  animation: rise 0.6s ease-out both;
+
+  h1 {
+    font-size: clamp(2.6rem, 9vw, 4.6rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+
+    span {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+  }
+}
+
+.chip-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(150px, 36vw, 200px);
+  aspect-ratio: 1;
+  margin-bottom: 4px;
+}
+
+.traces {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: color-mix(in srgb, var(--primary) 55%, transparent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  path {
+    stroke-dasharray: 6 10;
+    animation: flow 2.4s linear infinite;
+  }
+
+  circle {
+    fill: var(--accent);
+    stroke: none;
+  }
+}
+
+.chip {
+  display: grid;
+  place-items: center;
+  width: 46%;
+  aspect-ratio: 1;
+  border-radius: 24%;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  box-shadow:
+    0 14px 40px color-mix(in srgb, var(--primary) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  animation: float 4s ease-in-out infinite;
+}
+
+.eyebrow {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.lead {
+  max-width: 520px;
+  font-size: clamp(1rem, 2.4vw, 1.15rem);
+  color: var(--text-muted);
+}
+
+.cta {
+  margin-top: 8px;
+  min-width: 220px;
+  font-size: 1.1rem;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.hint {
+  max-width: 340px;
+}
+
+/* ---------- Características ---------- */
+.features {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+
+  @include up($bp-md) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+.feature {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+  animation: rise 0.6s ease-out both;
+
+  h2 {
+    font-size: 1.02rem;
+  }
+
+  p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+}
+
+.f-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 4px;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.foot {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -32;
+  }
+}

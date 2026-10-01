@@ -1,8 +1,15 @@
 import { Routes } from '@angular/router';
-import { guestGuard, homeRedirectGuard, matchRole, roleGuard } from './core/guards/auth.guards';
+import { guestGuard, landingGuard, matchRole, roleGuard } from './core/guards/auth.guards';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', canActivate: [homeRedirectGuard], children: [] },
+  {
+    // Página de inicio pública; si ya hay sesión, el guard lleva a la zona del usuario.
+    path: '',
+    pathMatch: 'full',
+    canActivate: [landingGuard],
+    title: 'Yincana PC',
+    loadComponent: () => import('./features/landing/landing.page').then((m) => m.LandingPage),
+  },
   {
     path: 'login',
     canActivate: [guestGuard],

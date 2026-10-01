@@ -26,11 +26,8 @@
   font-weight: 800;
   color: var(--text);
 
-  app-icon {
-    color: var(--primary);
-  }
-
-  span {
+  app-icon,
+  b {
     color: var(--primary);
   }
 }

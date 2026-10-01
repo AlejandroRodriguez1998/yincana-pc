@@ -1,5 +1,5 @@
 <header class="topbar">
-  <div class="brand"><app-icon name="cpu" [size]="20" /> Yincana <span>PC</span></div>
+  <div class="brand"><app-icon name="cpu" [size]="20" /><span>Yincana <b>PC</b></span></div>
   @if (pwa.canInstall()) {
     <button type="button" class="icon-btn" (click)="pwa.install()" aria-label="Instalar la app" title="Instalar la app">
       <app-icon name="download" />

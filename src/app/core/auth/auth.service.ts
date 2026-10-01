@@ -76,7 +76,7 @@ export class AuthService {
       // Si otra pestaña mantiene la caché abierta no se puede borrar; no es crítico.
     }
     await signOut(this.auth);
-    window.location.replace('/login');
+    window.location.replace('/');
   }
 
   private handleUser(user: User | null): void {
