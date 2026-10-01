@@ -1,0 +1,12 @@
+// Despliegue en Cloudflare Workers (recursos estáticos).
+// Workers Builds ejecuta `npm run build` y después `npx wrangler deploy`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yincana-pc",
+  "compatibility_date": "2026-09-30",
+  "assets": {
+    "directory": "./dist/yincana-pc/browser",
+    // Cualquier ruta desconocida (/juez, /ranking, /grupo…) devuelve index.html.
+    "not_found_handling": "single-page-application"
+  }
+}

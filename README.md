@@ -54,23 +54,25 @@ npm run build      # build de producción en dist/yincana-pc/browser
 
 Requiere Node ≥ 22.12.
 
-### 3. Despliegue en Cloudflare Pages
+### 3. Despliegue en Cloudflare (Workers)
 
-En Cloudflare: *Workers & Pages → Create → Pages → Connect to Git*, elige el repositorio y configura:
+En Cloudflare: *Workers & Pages → Create → Import a repository*, elige el repositorio y deja:
 
-| Ajuste                 | Valor                     |
-|------------------------|---------------------------|
-| Framework preset       | `Angular` (o `None`)      |
-| Build command          | `npm run build`           |
-| Build output directory | `dist/yincana-pc/browser` |
+| Ajuste          | Valor                |
+|-----------------|----------------------|
+| Project name    | `yincana-pc`         |
+| Build command   | `npm run build`      |
+| Deploy command  | `npx wrangler deploy` |
 
+- `wrangler.jsonc` publica `dist/yincana-pc/browser` como recursos estáticos, y con
+  `not_found_handling: "single-page-application"` cualquier ruta (`/juez`, `/ranking`…) devuelve `index.html`.
 - **Node**: el fichero `.node-version` fija Node 22, que es lo que necesita Angular 21.
-- **Rutas de la app**: Pages devuelve `index.html` para cualquier ruta desconocida porque el build no incluye
-  `404.html`, así que no hace falta `_redirects`.
 - **Cabeceras**: `public/_headers` añade las cabeceras de seguridad y cachea un año los ficheros con hash.
-  El resto (index, manifest, service worker) usa la revalidación por defecto de Pages.
-- Después del primer despliegue, añade el dominio `*.pages.dev` (o el tuyo) en *Firebase → Authentication →
-  Configuración → Dominios autorizados*.
+  El resto (index, manifest, service worker) se revalida siempre.
+- Si usas **Cloudflare Pages** en lugar de Workers, la salida es `dist/yincana-pc/browser` y funciona igual:
+  Pages ya devuelve `index.html` en rutas desconocidas porque el build no incluye `404.html`.
+- Después del primer despliegue, añade el dominio (`*.workers.dev`, `*.pages.dev` o el tuyo) en
+  *Firebase → Authentication → Configuración → Dominios autorizados*.
 
 `vercel.json` contiene la configuración equivalente por si algún día se despliega en Vercel.
 
