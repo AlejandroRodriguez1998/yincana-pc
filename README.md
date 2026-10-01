@@ -54,11 +54,25 @@ npm run build      # build de producción en dist/yincana-pc/browser
 
 Requiere Node ≥ 22.12.
 
-### 3. Despliegue en Vercel
+### 3. Despliegue en Cloudflare Pages
 
-`vercel.json` ya está preparado: build `npm run build`, salida `dist/yincana-pc/browser`,
-reescritura de todas las rutas a `index.html` (SPA) y cabeceras de caché y seguridad.
-Basta con importar el repositorio en Vercel.
+En Cloudflare: *Workers & Pages → Create → Pages → Connect to Git*, elige el repositorio y configura:
+
+| Ajuste                 | Valor                     |
+|------------------------|---------------------------|
+| Framework preset       | `Angular` (o `None`)      |
+| Build command          | `npm run build`           |
+| Build output directory | `dist/yincana-pc/browser` |
+
+- **Node**: el fichero `.node-version` fija Node 22, que es lo que necesita Angular 21.
+- **Rutas de la app**: Pages devuelve `index.html` para cualquier ruta desconocida porque el build no incluye
+  `404.html`, así que no hace falta `_redirects`.
+- **Cabeceras**: `public/_headers` añade las cabeceras de seguridad y cachea un año los ficheros con hash.
+  El resto (index, manifest, service worker) usa la revalidación por defecto de Pages.
+- Después del primer despliegue, añade el dominio `*.pages.dev` (o el tuyo) en *Firebase → Authentication →
+  Configuración → Dominios autorizados*.
+
+`vercel.json` contiene la configuración equivalente por si algún día se despliega en Vercel.
 
 ## PWA (app instalable)
 
@@ -69,8 +83,9 @@ Basta con importar el repositorio en Vercel.
   conexión: si no la hay, la app lo avisa y no guarda nada.
 - **Actualizaciones**: tras un despliegue aparece el aviso "Nueva versión disponible → Recargar". Nunca
   recarga sola, para no interrumpir un cronómetro.
-- **Vercel**: `ngsw-worker.js`, `ngsw.json`, `manifest.webmanifest` e `index.html` se sirven con `no-cache`,
-  y el resto de JS y CSS (con hash en el nombre) con caché de un año.
+- **Caché en el hosting**: `ngsw-worker.js`, `ngsw.json`, `manifest.webmanifest` e `index.html` se revalidan
+  siempre, y el JS y CSS con hash en el nombre se cachean un año (`public/_headers` en Cloudflare Pages,
+  `vercel.json` en Vercel).
 - El service worker solo funciona en el build de producción: `npm start` no lo activa. Para probarlo en local,
   haz `npm run build` y sirve `dist/yincana-pc/browser` con un servidor estático que devuelva `index.html`
   para cualquier ruta.
