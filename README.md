@@ -54,7 +54,23 @@ npm run build      # build de producción en dist/yincana-pc/browser
 
 Requiere Node ≥ 22.12.
 
-### 3. Despliegue en Cloudflare (Workers)
+### 3. Despliegue en Firebase Hosting
+
+```bash
+npx firebase-tools login      # una sola vez
+npm run deploy:hosting        # build + publicar la app
+npm run deploy:all            # build + app + reglas + índices
+```
+
+- La app queda en `https://yincana-pc.web.app` (y `yincana-pc.firebaseapp.com`). Estos dominios ya vienen
+  autorizados en Authentication.
+- `firebase.json` publica `dist/yincana-pc/browser` y reescribe cualquier ruta a `index.html`.
+- Cabeceras: seguridad en todo, caché de un año para los ficheros con hash y `no-cache` para `index.html`,
+  el manifest y el service worker, para que las actualizaciones de la PWA lleguen siempre.
+
+### Otros hostings (alternativa)
+
+#### Cloudflare (Workers)
 
 En Cloudflare: *Workers & Pages → Create → Import a repository*, elige el repositorio y deja:
 
