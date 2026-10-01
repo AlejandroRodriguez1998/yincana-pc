@@ -68,19 +68,31 @@
             <div class="group-grid">
               @for (g of filteredGroups(); track g.id) {
                 @let r = test() ? store.result(g.id, test()!.id) : null;
-                <button type="button" class="choice" [class.scored]="!!r" (click)="selectGroup(g)">
-                  <span class="choice-name">{{ g.name }}</span>
-                  @if (test()) {
-                    @if (r) {
-                      <span class="badge badge-success mono"><app-icon name="check" [size]="12" /> {{ r.totalMs | duration }}</span>
+                @let done = store.completedByGroup().get(g.id) ?? 0;
+                @let total = store.feed.activeTests().length;
+                <button type="button" class="group-card" [class.scored]="!!r" [class.complete]="!test() && total > 0 && done === total"
+                        (click)="selectGroup(g)">
+                  <span class="gc-avatar" aria-hidden="true">{{ badge(g.name) }}</span>
+                  <span class="gc-body">
+                    <span class="gc-name">{{ g.name }}</span>
+                    @if (test()) {
+                      @if (r) {
+                        <span class="badge badge-success mono"><app-icon name="check" [size]="12" /> {{ r.totalMs | duration }}</span>
+                      } @else {
+                        <span class="badge">Pendiente en esta prueba</span>
+                      }
                     } @else {
-                      <span class="badge">Pendiente</span>
+                      <span class="gc-meta tabular">
+                        @if (total > 0 && done === total) {
+                          <app-icon name="check" [size]="14" /> Todas hechas
+                        } @else {
+                          {{ done }}/{{ total }} pruebas
+                        }
+                      </span>
+                      <span class="gc-bar"><span [style.width.%]="total ? (done / total) * 100 : 0"></span></span>
                     }
-                  } @else {
-                    <span class="choice-meta tabular">
-                      {{ store.completedByGroup().get(g.id) ?? 0 }}/{{ store.feed.activeTests().length }} pruebas
-                    </span>
-                  }
+                  </span>
+                  <app-icon class="gc-chevron" name="chevron-right" [size]="22" />
                 </button>
               } @empty {
                 <p class="muted small">Ningún grupo coincide con "{{ search() }}".</p>

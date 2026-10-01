@@ -6,6 +6,7 @@ import { describeError } from '../../../core/firebase/errors';
 import { GROUP_NAME_MAX, PARTICIPANTS_MAX } from '../../../core/models';
 import { ToastService } from '../../../core/ui/toast.service';
 import { eventValue } from '../../../shared/dom';
+import { groupBadge } from '../../../shared/group-badge';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { ErrorState } from '../../../shared/components/error-state/error-state';
 import { Icon } from '../../../shared/components/icon/icon';
@@ -26,6 +27,7 @@ export class GroupsPage {
   private readonly router = inject(Router);
 
   protected readonly value = eventValue;
+  protected readonly badge = groupBadge;
   protected readonly search = signal('');
   protected readonly creating = signal(false);
   protected readonly saving = signal(false);

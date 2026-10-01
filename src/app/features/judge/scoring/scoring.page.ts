@@ -28,6 +28,7 @@ import { ErrorState } from '../../../shared/components/error-state/error-state';
 import { Icon } from '../../../shared/components/icon/icon';
 import { DurationPipe, formatDuration, parseDuration } from '../../../shared/pipes/duration.pipe';
 import { eventValue } from '../../../shared/dom';
+import { groupBadge } from '../../../shared/group-badge';
 import { JudgeStore } from '../judge.store';
 import { Stopwatch } from './stopwatch';
 
@@ -142,6 +143,7 @@ export class ScoringPage {
   });
 
   protected readonly value = eventValue;
+  protected readonly badge = groupBadge;
   private loadSeq = 0;
 
   constructor() {

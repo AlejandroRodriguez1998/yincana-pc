@@ -39,7 +39,7 @@
       @for (g of filtered(); track g.id) {
         <li>
           <a class="list-item" [routerLink]="['/juez/grupos', g.id]" [class.inactive]="!g.active">
-            <span class="avatar" aria-hidden="true">{{ g.name.charAt(0).toUpperCase() }}</span>
+            <span class="avatar" aria-hidden="true">{{ badge(g.name) }}</span>
             <span class="grow">
               <span class="item-title">{{ g.name }}</span>
               <span class="item-sub">
