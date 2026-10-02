@@ -1,0 +1,117 @@
+<div class="stage" [class.playing]="playing()">
+  <header class="bar">
+    <button type="button" class="bar-btn" (click)="exit()" aria-label="Volver a registrar tiempo">
+      <app-icon name="chevron-left" />
+    </button>
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <div class="brand-name">Simón <span>dice</span></div>
+        <div class="brand-sub">Yincana PC</div>
+      </div>
+    </div>
+    <button type="button" class="bar-btn" (click)="toggleMute()" [attr.aria-pressed]="muted()"
+            [attr.aria-label]="muted() ? 'Activar sonido' : 'Silenciar'">
+      <app-icon [name]="muted() ? 'volume-off' : 'volume'" />
+    </button>
+  </header>
+
+  @if (store.loading()) {
+    <div class="center-msg"><span class="spinner"></span> Cargando…</div>
+  } @else if (!test() || !group()) {
+    <section class="setup">
+      <div class="panel empty">
+        <h2>Abre el Simón dice desde "Registrar tiempo"</h2>
+        <p>Elige allí el grupo y una prueba de tipo Simón dice, y pulsa "Jugar".</p>
+        <a routerLink="/juez/puntuar" class="btn btn-primary">Ir a registrar tiempo</a>
+      </div>
+    </section>
+  } @else if (phase() === 'setup') {
+    <div class="center-msg"><span class="spinner"></span> Preparando la partida…</div>
+  } @else {
+    <!-- Partida -->
+    <section class="game">
+      <div class="hud">
+        <div class="who">
+          <span class="who-group">{{ group()?.name }}</span>
+          <span class="who-test">{{ test()?.name }} · {{ difficultyLabels[difficulty()] }}</span>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">Tiempo</span>
+            <span class="stat-value mono">{{ elapsedMs() | duration }}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Ronda</span>
+            <span class="stat-value mono">{{ round() }}/{{ config().rounds }}</span>
+          </div>
+          <div class="stat" [class.bad]="fails() > 0">
+            <span class="stat-label">Fallos</span>
+            <span class="stat-value mono">{{ fails() }}@if (fails() > 0) {<small> +{{ penaltyMs() | duration: false }}</small>}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="board-wrap">
+        <div class="board" [class.input]="phase() === 'input'" [class.failed]="phase() === 'failed'"
+             [class.done]="phase() === 'finished' || phase() === 'saved'" role="group"
+             aria-label="Tablero de Simón dice">
+          @for (p of pads; track p.index) {
+            <button
+              type="button"
+              class="pad"
+              [class]="'pad pad-' + p.index"
+              [class.lit]="lit() === p.index"
+              [disabled]="phase() !== 'input'"
+              (pointerdown)="$event.preventDefault(); press(p.index)"
+              (keydown.enter)="press(p.index)"
+              [attr.aria-label]="p.name"
+            ></button>
+          }
+          <div class="hub" aria-live="polite">
+            @if (phase() === 'countdown') {
+              <span class="count">{{ countdown() }}</span>
+            } @else if (phase() === 'finished' || phase() === 'saved') {
+              <app-icon name="trophy" [size]="40" [stroke]="1.6" />
+            } @else {
+              <span class="hub-round mono">{{ round() }}<small>/{{ config().rounds }}</small></span>
+            }
+            <span class="hub-status">{{ status() }}</span>
+          </div>
+        </div>
+      </div>
+
+      @if (phase() === 'finished' || phase() === 'saved') {
+        <div class="result" role="status">
+          <p class="result-label">{{ group()?.name }} · {{ test()?.name }} · {{ difficultyLabels[difficulty()] }}</p>
+          <p class="result-total mono">{{ totalMs() | duration }}</p>
+          <p class="result-breakdown">
+            Cronometrado <span class="mono">{{ elapsedMs() | duration }}</span>
+            @if (fails() > 0) {
+              · {{ fails() }} {{ fails() === 1 ? 'fallo' : 'fallos' }} (+{{ penaltyMs() | duration: false }})
+            } @else {
+              · sin fallos
+            }
+          </p>
+          <div class="result-actions">
+            @if (phase() === 'finished') {
+              <button type="button" class="btn btn-primary btn-lg" (click)="save()" [disabled]="saving()">
+                <app-icon name="check" /> {{ saving() ? 'Guardando…' : 'Guardar resultado' }}
+              </button>
+              <button type="button" class="btn btn-outline" (click)="retry()">
+                <app-icon name="reset" [size]="18" /> Repetir
+              </button>
+            } @else {
+              <span class="saved"><app-icon name="check" /> Resultado guardado</span>
+            }
+            <button type="button" class="btn btn-outline" (click)="nextGroup()">
+              Siguiente grupo <app-icon name="chevron-right" [size]="18" />
+            </button>
+          </div>
+        </div>
+      } @else {
+        <button type="button" class="btn btn-ghost btn-sm abandon" (click)="abandon()">Abandonar partida</button>
+      }
+    </section>
+  }
+</div>

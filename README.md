@@ -43,6 +43,11 @@ Gana el grupo que completa todas las pruebas en menos tiempo.
 A partir de ahí, todo se hace desde la app: el resto de jueces (*Más → Jueces*) y los accesos
 de cada grupo (*Grupos → grupo → Crear acceso*).
 
+**Alta de jueces con aprobación**: un profesor puede registrarse en `/alta-jueces` (nombre, email y contraseña).
+No hay ningún enlace a esa ruta, así que la URL se comparte a mano. La cuenta queda pendiente y sin permisos
+hasta que **cualquier juez** la apruebe o la rechace en *Más → Jueces → Solicitudes pendientes*.
+Una solicitud rechazada no se puede repetir con la misma cuenta.
+
 ### 2. Desarrollo local
 
 ```bash
@@ -141,11 +146,12 @@ En Cloudflare: *Workers & Pages → Create → Import a repository*, elige el re
 |------------------------------|-------------------------------------------------------------------------------------|
 | `users/{uid}`                | `role`, `groupId`, `displayName`, `username`, `createdAt`                           |
 | `groups/{groupId}`           | `name`, `participants[{id,name}]`, `active`, `createdAt`, `updatedAt`               |
-| `tests/{testId}`             | `name`, `description`, `order`, `active`, fechas                                    |
+| `tests/{testId}`             | `name`, `description`, `order`, `active`, `kind` (`timer`/`simon`), fechas |
 | `scores/{groupId}__{testId}` | `timeMs`, `penaltyMs`, `totalMs`, `judgeId`, `judgeName`, `auditId`, fechas          |
 | `auditLogs/{id}`             | `entityType`, `entityId`, `action`, grupo/prueba (id y nombre), `before`, `after`, `note`, `actorId`, `actorName`, `at` |
 | `standings/current`          | `groups.{groupId} = { name, active, results.{testId} = { totalMs, penaltyMs } }` (solo jueces) |
 | `standings/public`           | `groups.{groupId} = { name, active, totalMs, completed }` (jueces; grupos solo si está revelado) |
+| `judgeRequests/{uid}`        | `displayName`, `email`, `status` (`pending`/`rejected`), `createdAt` (solicitudes de `/alta-jueces`) |
 | `settings/competition`       | `rankingRevealed`, `revealedAt`, `updatedBy`, `updatedAt` (lo escriben los jueces)   |
 
 - **Sin duplicados.** El ID `groupId__testId` impide dos resultados para la misma combinación.
@@ -168,6 +174,14 @@ En Cloudflare: *Workers & Pages → Create → Import a repository*, elige el re
 - **Tiempo total del grupo** = suma de los tiempos finales de sus pruebas activas completadas.
 - **Ranking**: 1) más pruebas completadas, 2) menor tiempo total. Si sigue el empate, los grupos
   comparten posición (1, 1, 3…). No hay más criterios.
+- **Tipos de prueba**: *Cronómetro* (el juez cronometra) o *Simón dice*. Una prueba de Simón dice se juega
+  en `/simon` (proyector u ordenador, solo jueces): el grupo repite la secuencia de 4 colores y el reloj corre
+  hasta superar todas las rondas configuradas. En *Registrar tiempo*, dentro del panel "Jugar al
+  Simón dice", se eligen la dificultad (Fácil, Normal o Difícil: pasos de la primera ronda y velocidad), el número
+  de rondas y la penalización por fallo, y al pulsar "Jugar" la partida arranca directamente; cada ronda añade un paso y no hay rachas de tres colores iguales. Cada fallo suma la penalización configurada y repite la ronda.
+  Al terminar, el juez guarda el resultado (tiempo + penalizaciones) como cualquier otro. Se juega pulsando los
+  colores (ratón o pantalla táctil). Se abre desde *Registrar tiempo* con el botón "Jugar", con el grupo y la prueba ya elegidos; al terminar,
+  "Siguiente grupo" vuelve allí con la misma prueba seleccionada.
 - **Ranking oculto**: por defecto los grupos no ven su posición ni el ranking general. Un juez lo revela
   (u oculta) desde el panel o con el botón "Revelar" de `/ranking` y `/resultados`, y el cambio llega al instante.
   Mientras está oculto, el podio muestra "?" y la tabla aparece en orden alfabético y sin tiempo total ni

@@ -17,6 +17,7 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { ScoreTarget, ScoresService } from '../../../core/data/scores.service';
 import { describeError } from '../../../core/firebase/errors';
@@ -31,6 +32,8 @@ import { eventValue } from '../../../shared/dom';
 import { groupBadge } from '../../../shared/group-badge';
 import { JudgeStore } from '../judge.store';
 import { Stopwatch } from './stopwatch';
+import { SimonSettingsPicker } from '../../simon/simon-settings-picker';
+import { loadSettings, settingsQueryParams } from '../../simon/simon-settings';
 
 const PIN_KEY = 'yincana.scoring.pinnedTest';
 
@@ -65,7 +68,7 @@ type Step = 'group' | 'test' | 'form';
  */
 @Component({
   selector: 'app-scoring-page',
-  imports: [ReactiveFormsModule, RouterLink, Icon, Stopwatch, EmptyState, ErrorState, DurationPipe],
+  imports: [ReactiveFormsModule, RouterLink, NgTemplateOutlet, SimonSettingsPicker, Icon, Stopwatch, EmptyState, ErrorState, DurationPipe],
   templateUrl: './scoring.page.html',
   styleUrl: './scoring.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -91,6 +94,15 @@ export class ScoringPage {
   protected readonly loadingExisting = signal(false);
   protected readonly loadError = signal<string | null>(null);
   protected readonly editingTime = signal(false);
+  /** Panel abierto en pruebas de Simón dice: jugar o registrar a mano. */
+  protected readonly simonPanel = signal<'simon' | 'manual'>('simon');
+  /** Ajustes del Simón dice (dificultad, rondas, penalización), recordados en el dispositivo. */
+  protected readonly simonSettings = signal(loadSettings());
+
+  /** Query params para abrir /simon con este grupo, prueba y ajustes. */
+  protected simonParams(test: Test, group: Group): Record<string, string | number> {
+    return { prueba: test.id, grupo: group.id, ...settingsQueryParams(this.simonSettings()) };
+  }
   protected readonly timeText = signal('');
 
   protected readonly group = computed<Group | null>(() => {
@@ -331,6 +343,7 @@ export class ScoringPage {
     this.existing.set(null);
     this.loadError.set(null);
     this.editingTime.set(false);
+    this.simonPanel.set('simon');
     this.form.reset({ timeMs: null, penaltySeconds: 0 });
 
     const group = this.group();

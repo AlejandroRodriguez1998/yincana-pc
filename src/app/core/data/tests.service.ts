@@ -20,17 +20,27 @@ import { toScore } from './mappers';
 import { COLLECTIONS } from './paths';
 import { readStandings, standingsRef, writePublic } from './standings.service';
 
-function normalize(input: TestInput): TestInput {
+function toDoc(input: TestInput) {
   return {
     name: input.name.trim(),
     description: input.description.trim(),
     order: Math.trunc(input.order),
     active: input.active,
+    kind: input.kind,
   };
 }
 
-/** Campos de la versión con puntos: se eliminan al editar pruebas antiguas. */
-const LEGACY_FIELDS = { maxScore: deleteField(), usesTimer: deleteField() };
+/**
+ * Campos de versiones anteriores (puntos; configuración del Simón guardada en
+ * la prueba): se eliminan al editar pruebas antiguas.
+ */
+const LEGACY_FIELDS = {
+  maxScore: deleteField(),
+  usesTimer: deleteField(),
+  simonRounds: deleteField(),
+  simonPenaltySeconds: deleteField(),
+  simonDifficulty: deleteField(),
+};
 
 /** Pruebas activas tras aplicar un cambio de estado a una de ellas. */
 function activeIdsAfter(tests: readonly Test[], changedId: string, active: boolean): Set<string> {
@@ -52,7 +62,7 @@ export class TestsService {
   async create(input: TestInput): Promise<string> {
     this.actor.requireJudge();
     const ref = await addDoc(collection(this.db, COLLECTIONS.tests), {
-      ...normalize(input),
+      ...toDoc(input),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -65,7 +75,7 @@ export class TestsService {
     const previous = tests.find((t) => t.id === id);
     const batch = writeBatch(this.db);
     batch.update(doc(this.db, COLLECTIONS.tests, id), {
-      ...normalize(input),
+      ...toDoc(input),
       ...LEGACY_FIELDS,
       updatedAt: serverTimestamp(),
     });
@@ -81,6 +91,7 @@ export class TestsService {
     const batch = writeBatch(this.db);
     batch.update(doc(this.db, COLLECTIONS.tests, test.id), {
       active,
+      kind: test.kind,
       ...LEGACY_FIELDS,
       updatedAt: serverTimestamp(),
     });
@@ -95,11 +106,13 @@ export class TestsService {
     const orderA = a.order === b.order ? a.order + 1 : b.order;
     batch.update(doc(this.db, COLLECTIONS.tests, a.id), {
       order: orderA,
+      kind: a.kind,
       ...LEGACY_FIELDS,
       updatedAt: serverTimestamp(),
     });
     batch.update(doc(this.db, COLLECTIONS.tests, b.id), {
       order: a.order,
+      kind: b.kind,
       ...LEGACY_FIELDS,
       updatedAt: serverTimestamp(),
     });

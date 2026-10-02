@@ -1,0 +1,45 @@
+@use 'mixins' as *;
+
+.request {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px 14px;
+
+  & + & {
+    border-top: 1px solid var(--border);
+  }
+}
+
+.request-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.signup-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+
+  .grow {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 220px;
+  }
+
+  .link {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+}

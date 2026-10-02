@@ -62,3 +62,49 @@
 .block {
   display: block;
 }
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+
+  label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    border-radius: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+
+    &.on {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+
+    &:has(input:focus-visible) {
+      outline: 2px solid var(--primary);
+    }
+  }
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+// Miniatura del Simón clásico (4 cuadrantes de color).
+.simon-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: conic-gradient(#e53935 0 25%, #1e88e5 0 50%, #fdd835 0 75%, #43a047 0);
+}

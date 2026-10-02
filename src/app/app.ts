@@ -30,7 +30,8 @@ export class App {
       const status = this.auth.status();
       untracked(() => {
         const url = this.router.url;
-        const onPublicPage = url.startsWith('/login') || url === '/' || url.startsWith('/?');
+        const onPublicPage =
+          url.startsWith('/login') || url.startsWith('/alta-jueces') || url === '/' || url.startsWith('/?');
         if ((status === 'signedOut' || status === 'noProfile') && !onPublicPage && this.router.navigated) {
           void this.router.navigateByUrl('/login');
         }

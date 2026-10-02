@@ -7,6 +7,7 @@ import {
   AuditValues,
   CompetitionSettings,
   Group,
+  JudgeRequest,
   Participant,
   PublicStanding,
   PublicStandings,
@@ -100,6 +101,8 @@ export function toTest(snapshot: DocumentSnapshot): Test {
     description: str(d['description']),
     order: num(d['order']),
     active: bool(d['active'], true),
+    // Las pruebas antiguas (sin `kind`) son de cronómetro.
+    kind: d['kind'] === 'simon' ? 'simon' : 'timer',
     createdAt: date(d['createdAt']),
     updatedAt: date(d['updatedAt']),
   };
@@ -214,4 +217,15 @@ export function toPublicStandings(snapshot: DocumentSnapshot): PublicStandings {
 export function toSettings(snapshot: DocumentSnapshot): CompetitionSettings {
   const d = dataOf(snapshot);
   return { rankingRevealed: d['rankingRevealed'] === true, revealedAt: date(d['revealedAt']) };
+}
+
+export function toJudgeRequest(snapshot: DocumentSnapshot): JudgeRequest {
+  const d = dataOf(snapshot);
+  return {
+    uid: snapshot.id,
+    displayName: str(d['displayName'], 'Sin nombre'),
+    email: str(d['email']),
+    status: d['status'] === 'rejected' ? 'rejected' : 'pending',
+    createdAt: date(d['createdAt']),
+  };
 }

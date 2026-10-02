@@ -304,6 +304,13 @@ input[type='number'] {
   font-weight: 500;
 }
 
+.form-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+}
+
 .form-error {
   display: flex;
   gap: 8px;

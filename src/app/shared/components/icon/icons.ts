@@ -96,6 +96,8 @@ export const ICONS = {
   flag: ['M4 22V4', 'M4 4h13l-2 4 2 4H4'],
   more: ['M12 6h.01', 'M12 12h.01', 'M12 18h.01'],
   download: ['M12 3v12', 'm7 10 5 5 5-5', 'M5 21h14'],
+  volume: ['M11 5 6 9H2v6h4l5 4V5Z', 'M15.5 8.5a5 5 0 0 1 0 7', 'M19 5a10 10 0 0 1 0 14'],
+  'volume-off': ['M11 5 6 9H2v6h4l5 4V5Z', 'm22 9-6 6', 'm16 9 6 6'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type IconName = keyof typeof ICONS;

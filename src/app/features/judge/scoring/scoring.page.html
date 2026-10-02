@@ -164,98 +164,146 @@
             <p class="muted small description">{{ t.description }}</p>
           }
 
-          <!-- Cronómetro -->
-          <div class="field">
-            <span class="label">Tiempo</span>
-            <app-stopwatch [storageKey]="comboKey()!" (captured)="onCaptured($event)" />
-            <div class="time-row">
-              @if (editingTime()) {
-                <input
-                  class="input"
-                  type="text"
-                  inputmode="decimal"
-                  placeholder="m:ss.d"
-                  aria-label="Tiempo manual"
-                  [value]="timeText()"
-                  (input)="timeText.set(value($event))"
-                  (keydown.enter)="$event.preventDefault(); commitTimeEdit()"
-                />
-                <button type="button" class="btn btn-outline btn-sm" (click)="commitTimeEdit()">OK</button>
-              } @else {
-                <span class="grow">
-                  Tiempo a guardar: <strong class="mono">{{ timeValue() | duration }}</strong>
-                </span>
-                <button type="button" class="icon-btn" (click)="startTimeEdit()" aria-label="Escribir el tiempo a mano">
-                  <app-icon name="edit" [size]="18" />
+          <!-- Campos para registrar el tiempo a mano (reutilizados en ambos tipos de prueba) -->
+          <ng-template #manualFields>
+            <!-- Cronómetro -->
+            <div class="field">
+              <span class="label">Tiempo</span>
+              <app-stopwatch [storageKey]="comboKey()!" (captured)="onCaptured($event)" />
+              <div class="time-row">
+                @if (editingTime()) {
+                  <input
+                    class="input"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="m:ss.d"
+                    aria-label="Tiempo manual"
+                    [value]="timeText()"
+                    (input)="timeText.set(value($event))"
+                    (keydown.enter)="$event.preventDefault(); commitTimeEdit()"
+                  />
+                  <button type="button" class="btn btn-outline btn-sm" (click)="commitTimeEdit()">OK</button>
+                } @else {
+                  <span class="grow">
+                    Tiempo a guardar: <strong class="mono">{{ timeValue() | duration }}</strong>
+                  </span>
+                  <button type="button" class="icon-btn" (click)="startTimeEdit()" aria-label="Escribir el tiempo a mano">
+                    <app-icon name="edit" [size]="18" />
+                  </button>
+                  @if (timeValue() !== null) {
+                    <button type="button" class="icon-btn" (click)="clearTime()" aria-label="Quitar tiempo">
+                      <app-icon name="x" [size]="18" />
+                    </button>
+                  }
+                }
+              </div>
+              @if (timeError(); as msg) {
+                <span class="field-error">{{ msg }}</span>
+              }
+            </div>
+
+            <!-- Penalización -->
+            <div class="field">
+              <label for="penalty">Penalización <span class="faint">(segundos que se suman)</span></label>
+              <div class="stepper compact">
+                <button type="button" class="btn btn-outline step-btn" (click)="addPenalty(-5)" aria-label="Quitar 5 segundos">
+                  <app-icon name="minus" />
                 </button>
-                @if (timeValue() !== null) {
-                  <button type="button" class="icon-btn" (click)="clearTime()" aria-label="Quitar tiempo">
-                    <app-icon name="x" [size]="18" />
+                <input
+                  id="penalty"
+                  class="input"
+                  type="number"
+                  inputmode="numeric"
+                  step="1"
+                  min="0"
+                  formControlName="penaltySeconds"
+                  autocomplete="off"
+                />
+                <button type="button" class="btn btn-outline step-btn" (click)="addPenalty(5)" aria-label="Añadir 5 segundos">
+                  <app-icon name="plus" />
+                </button>
+              </div>
+              <div class="quick">
+                <button type="button" class="btn btn-sm btn-outline" (click)="addPenalty(10)">+10 s</button>
+                <button type="button" class="btn btn-sm btn-outline" (click)="addPenalty(30)">+30 s</button>
+                <button type="button" class="btn btn-sm btn-outline" (click)="addPenalty(60)">+1 min</button>
+                @if (penaltyMs() > 0) {
+                  <button type="button" class="btn btn-sm btn-ghost" (click)="resetPenalty()" aria-label="Quitar penalización">
+                    <app-icon name="x" [size]="16" />
                   </button>
                 }
+              </div>
+              @if (penaltyError(); as msg) {
+                <span class="field-error">{{ msg }}</span>
               }
             </div>
-            @if (timeError(); as msg) {
-              <span class="field-error">{{ msg }}</span>
-            }
-          </div>
 
-          <!-- Penalización -->
-          <div class="field">
-            <label for="penalty">Penalización <span class="faint">(segundos que se suman)</span></label>
-            <div class="stepper compact">
-              <button type="button" class="btn btn-outline step-btn" (click)="addPenalty(-5)" aria-label="Quitar 5 segundos">
-                <app-icon name="minus" />
+            @if (existing()) {
+              <button type="button" class="btn btn-danger-ghost btn-sm remove" (click)="remove()" [disabled]="saving()">
+                <app-icon name="trash" [size]="16" /> Eliminar este resultado
               </button>
-              <input
-                id="penalty"
-                class="input"
-                type="number"
-                inputmode="numeric"
-                step="1"
-                min="0"
-                formControlName="penaltySeconds"
-                autocomplete="off"
-              />
-              <button type="button" class="btn btn-outline step-btn" (click)="addPenalty(5)" aria-label="Añadir 5 segundos">
-                <app-icon name="plus" />
+            }
+
+            <!-- Barra de guardado fija, al alcance del pulgar -->
+            <div class="save-bar">
+              <div class="final">
+                <span class="small muted">Total{{ penaltyMs() > 0 ? ' (+pen.)' : '' }}</span>
+                <strong class="mono">{{ totalPreview() | duration }}</strong>
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg grow" [disabled]="saving() || loadingExisting()">
+                @if (saving()) {
+                  <span class="spinner" aria-hidden="true"></span> Guardando…
+                } @else {
+                  <app-icon name="check" /> Guardar
+                }
               </button>
             </div>
-            <div class="quick">
-              <button type="button" class="btn btn-sm btn-outline" (click)="addPenalty(10)">+10 s</button>
-              <button type="button" class="btn btn-sm btn-outline" (click)="addPenalty(30)">+30 s</button>
-              <button type="button" class="btn btn-sm btn-outline" (click)="addPenalty(60)">+1 min</button>
-              @if (penaltyMs() > 0) {
-                <button type="button" class="btn btn-sm btn-ghost" (click)="resetPenalty()" aria-label="Quitar penalización">
-                  <app-icon name="x" [size]="16" />
+          </ng-template>
+
+          @if (t.kind === 'simon') {
+            <!-- Dos paneles desplegables: solo uno abierto a la vez -->
+            <div class="accordion">
+              <section class="acc-item" [class.open]="simonPanel() === 'simon'">
+                <button type="button" class="acc-head" (click)="simonPanel.set('simon')"
+                        [attr.aria-expanded]="simonPanel() === 'simon'" aria-controls="panel-simon">
+                  <span class="simon-dot" aria-hidden="true"></span>
+                  <span class="grow">
+                    <strong class="acc-title">Jugar al Simón dice</strong>
+                    <span class="item-sub">En pantalla grande · el resultado se guarda al terminar</span>
+                  </span>
+                  <app-icon class="acc-chevron" name="chevron-down" [size]="20" />
                 </button>
-              }
-            </div>
-            @if (penaltyError(); as msg) {
-              <span class="field-error">{{ msg }}</span>
-            }
-          </div>
+                @if (simonPanel() === 'simon') {
+                  <div class="acc-body" id="panel-simon">
+                    <app-simon-settings-picker [(settings)]="simonSettings" />
+                    <a class="btn btn-primary btn-lg btn-block" [routerLink]="['/simon']"
+                       [queryParams]="simonParams(t, group()!)">
+                      <app-icon name="play" [size]="20" /> Jugar
+                    </a>
+                  </div>
+                }
+              </section>
 
-          @if (existing()) {
-            <button type="button" class="btn btn-danger-ghost btn-sm remove" (click)="remove()" [disabled]="saving()">
-              <app-icon name="trash" [size]="16" /> Eliminar este resultado
-            </button>
+              <section class="acc-item" [class.open]="simonPanel() === 'manual'">
+                <button type="button" class="acc-head" (click)="simonPanel.set('manual')"
+                        [attr.aria-expanded]="simonPanel() === 'manual'" aria-controls="panel-manual">
+                  <span class="acc-icon" aria-hidden="true"><app-icon name="timer" [size]="20" /></span>
+                  <span class="grow">
+                    <strong class="acc-title">Registrar el tiempo a mano</strong>
+                    <span class="item-sub">Con el cronómetro o escribiendo el tiempo</span>
+                  </span>
+                  <app-icon class="acc-chevron" name="chevron-down" [size]="20" />
+                </button>
+                @if (simonPanel() === 'manual') {
+                  <div class="acc-body stack" id="panel-manual">
+                    <ng-container [ngTemplateOutlet]="manualFields" />
+                  </div>
+                }
+              </section>
+            </div>
+          } @else {
+            <ng-container [ngTemplateOutlet]="manualFields" />
           }
-
-          <!-- Barra de guardado fija, al alcance del pulgar -->
-          <div class="save-bar">
-            <div class="final">
-              <span class="small muted">Total{{ penaltyMs() > 0 ? ' (+pen.)' : '' }}</span>
-              <strong class="mono">{{ totalPreview() | duration }}</strong>
-            </div>
-            <button type="submit" class="btn btn-primary btn-lg grow" [disabled]="saving() || loadingExisting()">
-              @if (saving()) {
-                <span class="spinner" aria-hidden="true"></span> Guardando…
-              } @else {
-                <app-icon name="check" /> Guardar
-              }
-            </button>
-          </div>
         </form>
       }
     }

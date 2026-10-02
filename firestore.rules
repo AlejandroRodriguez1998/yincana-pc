@@ -80,7 +80,8 @@ service cloud.firestore {
     function validUser(d) {
       return hasExactly(d, ['role', 'groupId', 'displayName', 'username', 'createdAt'])
         && isText(d.displayName, 1, 80)
-        && isText(d.username, 0, 30)
+        // Usuario de las cuentas creadas en la app, o email de los jueces dados de alta.
+        && isText(d.username, 0, 254)
         && (
           (d.role == 'judge' && d.groupId == null)
           || (d.role == 'group' && d.groupId is string && exists(docPath('groups', d.groupId)))
@@ -102,6 +103,38 @@ service cloud.firestore {
         && (uid != request.auth.uid || incoming().role == 'judge');
 
       allow delete: if isJudge() && uid != request.auth.uid;
+    }
+
+    // ---------------------------------------------------------- judgeRequests
+    // judgeRequests/{uid}: { displayName, email, status, createdAt[, reviewedBy, reviewedAt] }
+    // Alta de jueces desde /alta-jueces. Una solicitud no da ningún permiso:
+    // el acceso llega cuando un juez crea users/{uid} (aprobación).
+
+    match /judgeRequests/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isJudge());
+      allow list: if isJudge();
+
+      // Solo para uno mismo, sin perfil previo, con su email verificado por Auth y
+      // una única vez (si se rechaza, la solicitud queda y no se puede repetir).
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && !hasProfile()
+        && hasExactly(incoming(), ['displayName', 'email', 'status', 'createdAt'])
+        && isText(incoming().displayName, 1, 80)
+        && incoming().email == request.auth.token.email
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time;
+
+      // Rechazo: solo cambia el estado y quién/cuándo lo revisó.
+      allow update: if isJudge()
+        && resource.data.status == 'pending'
+        && incoming().diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt'])
+        && incoming().status == 'rejected'
+        && incoming().reviewedBy == request.auth.uid
+        && incoming().reviewedAt == request.time;
+
+      // Aprobación: se borra en el mismo lote en que se crea el perfil de juez.
+      allow delete: if isJudge();
     }
 
     // ----------------------------------------------------------------- groups
@@ -132,15 +165,17 @@ service cloud.firestore {
     }
 
     // ------------------------------------------------------------------ tests
-    // tests/{testId}: { name, description, order, active, createdAt, updatedAt }
-    // Todas las pruebas se cronometran.
+    // tests/{testId}: { name, description, order, active, kind, createdAt, updatedAt }
+    // kind 'timer': se cronometra. kind 'simon': Simón dice (dificultad, rondas y
+    // penalización se eligen al empezar cada partida).
 
     function validTest(d) {
-      return hasExactly(d, ['name', 'description', 'order', 'active', 'createdAt', 'updatedAt'])
+      return hasExactly(d, ['name', 'description', 'order', 'active', 'kind', 'createdAt', 'updatedAt'])
         && isText(d.name, 1, 80)
         && isText(d.description, 0, 1000)
         && d.order is int
         && d.active is bool
+        && d.kind in ['timer', 'simon']
         && d.updatedAt == request.time;
     }
 

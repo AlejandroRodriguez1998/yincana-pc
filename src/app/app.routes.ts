@@ -11,6 +11,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/landing/landing.page').then((m) => m.LandingPage),
   },
   {
+    // Alta de jueces pendiente de aprobación. Sin enlaces: la URL se comparte a mano.
+    path: 'alta-jueces',
+    canActivate: [guestGuard],
+    title: 'Alta de jueces · Yincana PC',
+    loadComponent: () =>
+      import('./features/auth/judge-signup/judge-signup.page').then((m) => m.JudgeSignupPage),
+  },
+  {
     path: 'login',
     canActivate: [guestGuard],
     title: 'Entrar · Yincana PC',
@@ -28,6 +36,13 @@ export const routes: Routes = [
     path: 'grupo',
     canMatch: [roleGuard('group')],
     loadChildren: () => import('./features/group/group.routes').then((m) => m.GROUP_ROUTES),
+  },
+  {
+    // Simón dice para proyector u ordenador (solo jueces), sin menú.
+    path: 'simon',
+    canMatch: [roleGuard('judge')],
+    title: 'Simón dice · Yincana PC',
+    loadComponent: () => import('./features/simon/simon.page').then((m) => m.SimonPage),
   },
   {
     // Pantalla final / ranking de jueces (podio + tabla por prueba). Solo jueces:

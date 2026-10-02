@@ -6,6 +6,55 @@
     </button>
   </header>
 
+  <!-- Enlace de autoregistro (la ruta no aparece en ningún otro sitio) -->
+  <section class="card card-pad signup-link">
+    <div class="grow">
+      <h2>Alta de jueces</h2>
+      <p class="small muted">
+        Comparte este enlace con otros profesores. Se registran ellos mismos y su acceso queda pendiente
+        hasta que un juez lo apruebe aquí.
+      </p>
+      <code class="link mono">{{ signupUrl }}</code>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" (click)="copySignupLink()">
+      <app-icon name="copy" [size]="16" /> Copiar enlace
+    </button>
+  </section>
+
+  <!-- Solicitudes de /alta-jueces -->
+  @if (requestsError(); as err) {
+    <app-error-state [message]="err" />
+  } @else if (requests(); as pending) {
+    @if (pending.length > 0) {
+      <section class="stack-sm" aria-labelledby="requests-title">
+        <div class="section-title">
+          <span id="requests-title">Solicitudes pendientes ({{ pending.length }})</span>
+          <button type="button" class="icon-btn" (click)="refreshRequests()" aria-label="Actualizar solicitudes">
+            <app-icon name="refresh" [size]="16" />
+          </button>
+        </div>
+        <ul class="list">
+          @for (r of pending; track r.uid) {
+            <li class="request">
+              <div class="grow">
+                <div class="item-title">{{ r.displayName }}</div>
+                <div class="item-sub">{{ r.email }} · {{ formatDate(r.createdAt) }}</div>
+              </div>
+              <div class="request-actions">
+                <button type="button" class="btn btn-danger-ghost btn-sm" (click)="reject(r)" [disabled]="reviewing() !== null">
+                  Rechazar
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" (click)="approve(r)" [disabled]="reviewing() !== null">
+                  <app-icon name="check" [size]="16" /> Aprobar
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+
   @if (error(); as err) {
     <app-error-state [message]="err" />
   }

@@ -7,6 +7,7 @@ export const COLLECTIONS = {
   auditLogs: 'auditLogs',
   standings: 'standings',
   settings: 'settings',
+  judgeRequests: 'judgeRequests',
 } as const;
 
 /** Desglose por grupo y prueba (solo jueces). */

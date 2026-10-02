@@ -1,5 +1,6 @@
 export * from './audit-log.model';
 export * from './group.model';
+export * from './judge-request.model';
 export * from './score.model';
 export * from './settings.model';
 export * from './standings.model';

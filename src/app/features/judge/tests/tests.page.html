@@ -22,9 +22,16 @@
         <div class="order" aria-hidden="true">{{ i + 1 }}</div>
         <div class="grow body">
           <h2 class="truncate">{{ t.name }}</h2>
-          @if (!t.active) {
-            <div class="meta"><span class="badge badge-warning">Inactiva</span></div>
-          }
+          <div class="meta">
+            @if (t.kind === 'simon') {
+              <span class="badge badge-primary">Simón dice</span>
+            } @else {
+              <span class="badge"><app-icon name="timer" [size]="12" /> Cronómetro</span>
+            }
+            @if (!t.active) {
+              <span class="badge badge-warning">Inactiva</span>
+            }
+          </div>
           @if (t.description) {
             <p class="desc small muted">{{ t.description }}</p>
           }
@@ -81,6 +88,27 @@
       <label for="t-desc">Descripción <span class="faint">(opcional)</span></label>
       <textarea id="t-desc" class="textarea" formControlName="description" rows="3" [maxlength]="limits.description"
                 placeholder="Qué tiene que hacer el grupo y cuándo se para el cronómetro"></textarea>
+    </div>
+    <div class="field">
+      <span class="label">Tipo de prueba</span>
+      <div class="segmented" role="radiogroup" aria-label="Tipo de prueba">
+        <label [class.on]="form.controls.kind.value === 'timer'">
+          <input type="radio" formControlName="kind" value="timer" />
+          <app-icon name="timer" [size]="18" /> Cronómetro
+        </label>
+        <label [class.on]="form.controls.kind.value === 'simon'">
+          <input type="radio" formControlName="kind" value="simon" />
+          <span class="simon-dot" aria-hidden="true"></span> Simón dice
+        </label>
+      </div>
+      <span class="hint">
+        @if (form.controls.kind.value === 'simon') {
+          Se juega en la pantalla /simon, donde eliges dificultad, rondas y penalización antes de empezar. El tiempo
+          corre hasta superar todas las rondas; cada fallo suma la penalización y repite la ronda.
+        } @else {
+          El juez cronometra la prueba con el cronómetro de la app.
+        }
+      </span>
     </div>
     <div class="field">
       <label for="t-order">Orden</label>

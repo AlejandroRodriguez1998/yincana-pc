@@ -2,7 +2,13 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TestsService } from '../../../core/data/tests.service';
 import { describeError } from '../../../core/firebase/errors';
-import { TEST_DESCRIPTION_MAX, TEST_NAME_MAX, Test } from '../../../core/models';
+import {
+  TEST_DESCRIPTION_MAX,
+  TEST_NAME_MAX,
+  Test,
+  TestInput,
+  TestKind,
+} from '../../../core/models';
 import { ConfirmService } from '../../../core/ui/confirm.service';
 import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state';
@@ -39,12 +45,19 @@ export class TestsPage {
     description: ['', [Validators.maxLength(TEST_DESCRIPTION_MAX)]],
     order: [1, [Validators.required, Validators.min(0), Validators.max(9999)]],
     active: [true],
+    kind: ['timer' as TestKind],
   });
 
   protected openCreate(): void {
     const tests = this.store.feed.tests();
     const nextOrder = tests.reduce((max, t) => Math.max(max, t.order), 0) + 1;
-    this.form.reset({ name: '', description: '', order: nextOrder, active: true });
+    this.form.reset({
+      name: '',
+      description: '',
+      order: nextOrder,
+      active: true,
+      kind: 'timer',
+    });
     this.editing.set('new');
   }
 
@@ -54,6 +67,7 @@ export class TestsPage {
       description: test.description,
       order: test.order,
       active: test.active,
+      kind: test.kind,
     });
     this.editing.set(test);
   }
@@ -65,7 +79,7 @@ export class TestsPage {
       this.form.markAllAsTouched();
       return;
     }
-    const value = this.form.getRawValue();
+    const value: TestInput = this.form.getRawValue();
     this.saving.set(true);
     try {
       if (target === 'new') {
