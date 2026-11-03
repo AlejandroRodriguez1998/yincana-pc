@@ -35,6 +35,7 @@
   max-width: 1800px;
   margin: 0 auto;
   padding: clamp(12px, 2vw, 40px);
+  padding-top: calc(clamp(12px, 2vw, 40px) + var(--safe-top));
   padding-bottom: 48px;
   display: flex;
   flex-direction: column;

@@ -13,9 +13,10 @@
   gap: 4px;
   max-width: 820px;
   margin: 0 auto;
-  padding: 8px 8px 8px 16px;
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
-  backdrop-filter: blur(10px);
+  padding: calc(8px + var(--safe-top)) 8px 8px 16px;
+  // Fondo opaco: en iOS el blur translúcido se veía borroso bajo la barra de estado.
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 
 .brand {

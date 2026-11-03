@@ -5,7 +5,7 @@
   min-height: 100dvh;
   max-width: 420px;
   margin: 0 auto;
-  padding: 48px 16px 32px;
+  padding: calc(48px + var(--safe-top)) 16px 32px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -19,13 +19,13 @@
 
 .theme {
   position: absolute;
-  top: 12px;
+  top: calc(12px + var(--safe-top));
   right: 8px;
 }
 
 .back {
   position: absolute;
-  top: 12px;
+  top: calc(12px + var(--safe-top));
   left: 8px;
 }
 
