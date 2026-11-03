@@ -10,6 +10,7 @@ import { UpdateBanner } from './shared/components/update-banner/update-banner';
   selector: 'app-root',
   imports: [RouterOutlet, ToastHost, ConfirmHost, UpdateBanner],
   template: `
+    <div class="status-bar" aria-hidden="true"></div>
     <router-outlet />
     <app-toast-host />
     <app-confirm-host />

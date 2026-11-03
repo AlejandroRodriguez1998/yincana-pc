@@ -22,6 +22,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+// Franja opaca bajo la hora / notch en iOS a pantalla completa. Es un elemento real
+// (no pseudo) y recibe toques a propósito: iOS 26 detecta por hit-testing los elementos
+// fijos pegados arriba y, si encuentra uno opaco, usa su color en vez de difuminar.
+.status-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: var(--safe-top);
+  background: var(--bg);
+}
+
+// Pantallas de escenario (siempre oscuras).
+:root:has(app-simon-page, app-final-results) .status-bar {
+  background: #070c14;
+}
+
 h1,
 h2,
 h3,
