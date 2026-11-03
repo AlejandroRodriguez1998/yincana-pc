@@ -302,6 +302,11 @@
               </section>
             </div>
           } @else {
+            @if (t.kind === 'disk') {
+              <a class="btn btn-outline btn-block" [routerLink]="['/juez/disco', t.id]">
+                <app-icon name="disk" [size]="18" /> Ver la partida y registrar con un toque
+              </a>
+            }
             <ng-container [ngTemplateOutlet]="manualFields" />
           }
         </form>

@@ -45,6 +45,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/simon/simon.page').then((m) => m.SimonPage),
   },
   {
+    // Tarjetas QR y tabla FAT de la prueba "Recupera el archivo", para imprimir.
+    path: 'disco/:testId/imprimir',
+    canMatch: [roleGuard('judge')],
+    title: 'Imprimir sectores · Yincana PC',
+    loadComponent: () =>
+      import('./features/disk-print/disk-print.page').then((m) => m.DiskPrintPage),
+  },
+  {
     // Pantalla final / ranking de jueces (podio + tabla por prueba). Solo jueces:
     // las reglas de Firestore tampoco dejan a los grupos leer el desglose.
     path: 'resultados',

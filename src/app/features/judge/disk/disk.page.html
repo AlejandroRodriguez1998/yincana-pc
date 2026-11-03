@@ -1,0 +1,272 @@
+<div class="page">
+  <header class="page-head">
+    <a routerLink="/juez/pruebas" class="icon-btn" aria-label="Volver a pruebas">
+      <app-icon name="chevron-left" />
+    </a>
+    <h1>{{ test()?.name ?? 'Recupera el archivo' }}</h1>
+    <button type="button" class="btn btn-outline btn-sm" (click)="openPrint()" [disabled]="!config() || busy() !== null">
+      <app-icon name="printer" [size]="18" /> Imprimir
+    </button>
+  </header>
+
+  @if (store.error() ?? liveError(); as error) {
+    <app-error-state [message]="error" />
+  }
+
+  @if (!store.loading() && !test()) {
+    <app-empty-state icon="tests" heading="Prueba no encontrada" text="Puede que se haya eliminado." />
+  } @else {
+    <p class="intro small muted">
+      Cada grupo tiene un archivo repartido en sectores (tarjetas QR escondidas). Al escanear el sector que toca
+      responde una pregunta; si acierta, lee su trozo del archivo y el siguiente sector. Al final escribe el archivo
+      completo. Cada fallo suma la penalización.
+    </p>
+
+    @if (test() && !test()!.active) {
+      <p class="form-error">La prueba está inactiva: los grupos no pueden empezar.</p>
+    }
+
+    <!-- ============ Partidas en directo ============ -->
+    <section class="stack-sm">
+      <div class="section-title">
+        <span>Grupos ({{ rows().length }})</span>
+        <span class="live small"><span class="dot"></span> En directo</span>
+      </div>
+
+      @if (liveLoading() || store.loading()) {
+        <div class="skeleton" style="height: 140px"></div>
+      } @else {
+        <div class="gen-bar">
+          @if (missing().length > 0) {
+            <button type="button" class="btn btn-primary" (click)="generate(false)"
+                    [disabled]="busy() !== null || !config() || problems().length > 0">
+              <app-icon name="disk" [size]="18" />
+              {{ busy() === 'generate' ? 'Generando…' : 'Generar discos (' + missing().length + ' grupos)' }}
+            </button>
+          }
+          @if (missing().length < rows().length) {
+            <button type="button" class="btn btn-ghost" (click)="generate(true)"
+                    [disabled]="busy() !== null || !config() || problems().length > 0">
+              <app-icon name="refresh" [size]="18" /> Regenerar todos
+            </button>
+          }
+          @if (toRecord().length > 1) {
+            <button type="button" class="btn btn-accent" (click)="recordAll()" [disabled]="busy() !== null">
+              <app-icon name="check" [size]="18" /> Registrar terminados ({{ toRecord().length }})
+            </button>
+          }
+        </div>
+
+        <ul class="rows">
+          @for (r of rows(); track r.group.id) {
+            <li class="card row-card" [class]="'tone-' + r.tone">
+              <div class="row-main">
+                <div class="grow">
+                  <div class="item-title truncate">{{ r.group.name }}</div>
+                  <div class="item-sub">{{ r.status }}</div>
+                </div>
+                @if (r.run) {
+                  <div class="clock">
+                    <strong class="mono">{{ elapsed(r.run) | duration: false }}</strong>
+                    @if (r.run.wrong > 0) {
+                      <span class="badge badge-warning">{{ r.run.wrong }} fallos</span>
+                    }
+                  </div>
+                }
+              </div>
+
+              @if (r.info && r.run) {
+                <div class="sectors" aria-hidden="true">
+                  @for (i of range(r.info.count); track i) {
+                    <span [class.read]="i < r.run.step" [class.found]="i === r.run.step && r.run.found > r.run.step"></span>
+                  }
+                </div>
+              }
+
+              @if (r.result; as res) {
+                <div class="result">
+                  <span class="small">
+                    <span class="mono">{{ res.timeMs | duration }}</span>
+                    @if (res.penaltyMs > 0) {
+                      + <span class="mono">{{ res.penaltyMs | duration: false }}</span>
+                    }
+                    = <strong class="mono">{{ res.timeMs + res.penaltyMs | duration }}</strong>
+                  </span>
+                  @if (r.recorded) {
+                    <span class="badge badge-success"><app-icon name="check" [size]="12" /> Registrado</span>
+                  } @else {
+                    <button type="button" class="btn btn-accent btn-sm" (click)="recordOne(r)" [disabled]="busy() !== null">
+                      {{ store.result(r.group.id, testId()) ? 'Actualizar tiempo' : 'Registrar tiempo' }}
+                    </button>
+                  }
+                </div>
+              }
+
+              @if (r.secret || r.run) {
+                <details class="more">
+                  <summary class="small muted">Detalles</summary>
+                  @if (r.secret; as s) {
+                    <p class="small">Recorrido: <span class="mono">{{ s.labels.join(' → ') }}</span></p>
+                    <p class="small">Archivo: <span class="mono">{{ s.file }}</span></p>
+                  }
+                  @if (r.run) {
+                    <button type="button" class="btn btn-danger-ghost btn-sm" (click)="reset(r)" [disabled]="busy() !== null">
+                      <app-icon name="reset" [size]="16" /> Reiniciar partida
+                    </button>
+                  }
+                </details>
+              }
+            </li>
+          } @empty {
+            <app-empty-state icon="users" heading="No hay grupos activos" text="Crea grupos para generar sus discos." />
+          }
+        </ul>
+      }
+    </section>
+
+    <!-- ============ Configuración ============ -->
+    @if (configError(); as error) {
+      <app-error-state [message]="error" />
+    } @else if (!config()) {
+      <div class="skeleton" style="height: 240px"></div>
+    } @else {
+      @let c = config()!;
+      <section class="card card-pad stack">
+        <div class="row-between">
+          <h2>Ajustes</h2>
+          @if (dirty()) {
+            <span class="badge badge-warning">Sin guardar</span>
+          }
+        </div>
+        <div class="grid-3">
+          <div class="field">
+            <label for="d-sectors">Sectores físicos</label>
+            <input id="d-sectors" class="input" type="number" inputmode="numeric" min="1" [max]="limits.sectors"
+                   [value]="c.sectors.length" (change)="setSectorCount(value($event))" />
+          </div>
+          <div class="field">
+            <label for="d-chain">Sectores por archivo</label>
+            <input id="d-chain" class="input" type="number" inputmode="numeric" min="1" [max]="limits.chain"
+                   [value]="c.chainLength" (change)="setChainLength(value($event))" />
+          </div>
+          <div class="field">
+            <label for="d-pen">Penalización (s)</label>
+            <input id="d-pen" class="input" type="number" inputmode="numeric" min="0" max="600"
+                   [value]="c.penaltySeconds" (change)="setPenalty(value($event))" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="d-digits">Dígitos por fragmento</label>
+          <input id="d-digits" class="input narrow" type="number" inputmode="numeric" min="1" max="8"
+                 [value]="c.fragmentDigits" (change)="setDigits(value($event))" />
+          <span class="hint">
+            El archivo de cada grupo será un número de {{ c.chainLength * c.fragmentDigits }} cifras.
+            Con más sectores físicos que sectores por archivo, los que sobran hacen de señuelo.
+          </span>
+        </div>
+
+        @for (p of problems(); track p) {
+          <p class="form-error">{{ p }}</p>
+        }
+      </section>
+
+      <section class="card card-pad stack-sm">
+        <div class="row-between">
+          <h2>Sectores y ubicaciones</h2>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="showCodes.set(!showCodes())">
+            <app-icon [name]="showCodes() ? 'eye-off' : 'eye'" [size]="16" /> Códigos
+          </button>
+        </div>
+        <p class="hint">Esta es la "FAT" que se imprime y se cuelga: dónde está escondida cada tarjeta.</p>
+        <ul class="sector-list">
+          @for (s of c.sectors; track s.code; let i = $index) {
+            <li>
+              <span class="sector-label mono">{{ s.label }}</span>
+              <input class="input" [value]="s.location" [attr.maxlength]="limits.location" placeholder="Dónde se esconde"
+                     [attr.aria-label]="'Ubicación del sector ' + s.label" (input)="setLocation(i, value($event))" />
+              @if (showCodes()) {
+                <span class="code mono small">{{ formatCode(s.code) }}</span>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="card card-pad stack-sm">
+        <div class="row-between">
+          <h2>Preguntas ({{ c.questions.length }})</h2>
+          <button type="button" class="btn btn-primary btn-sm" (click)="openQuestion('new')">
+            <app-icon name="plus" [size]="16" /> Nueva
+          </button>
+        </div>
+        <ul class="list">
+          @for (q of c.questions; track $index; let i = $index) {
+            <li>
+              <button type="button" class="list-item" (click)="openQuestion(i)">
+                <span class="grow">
+                  <span class="item-title q-text">{{ q.text }}</span>
+                  <span class="item-sub truncate">✔ {{ q.options[q.correct] }}</span>
+                </span>
+                <app-icon name="edit" [size]="16" />
+              </button>
+            </li>
+          }
+        </ul>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="restoreQuestions()">
+          <app-icon name="reset" [size]="16" /> Restaurar banco inicial
+        </button>
+      </section>
+
+      <div class="save-bar">
+        <button type="button" class="btn btn-primary btn-lg btn-block" (click)="saveClick()"
+                [disabled]="!dirty() || busy() !== null">
+          {{ busy() === 'save' ? 'Guardando…' : dirty() ? 'Guardar configuración' : 'Configuración guardada' }}
+        </button>
+        <p class="hint">
+          Los cambios de preguntas, penalización o tamaño del archivo se aplican al generar o regenerar los discos.
+          Las ubicaciones se pueden cambiar en cualquier momento (vuelve a imprimir la FAT).
+        </p>
+      </div>
+    }
+  }
+</div>
+
+<app-sheet [open]="editingQuestion() !== null" [heading]="editingQuestion() === 'new' ? 'Nueva pregunta' : 'Editar pregunta'"
+           (closed)="editingQuestion.set(null)">
+  @let d = questionDraft();
+  <div class="stack">
+    <div class="field">
+      <label for="q-text">Pregunta</label>
+      <textarea id="q-text" class="textarea" rows="3" [attr.maxlength]="limits.question" [value]="d.text"
+                (input)="draftText(value($event))"></textarea>
+    </div>
+    <fieldset class="field options">
+      <legend class="label">Respuestas <span class="faint">(marca la correcta)</span></legend>
+      @for (o of d.options; track $index; let i = $index) {
+        <div class="option-row">
+          <input type="radio" name="q-correct" [checked]="d.correct === i" (change)="draftCorrect(i)"
+                 [attr.aria-label]="'Respuesta ' + (i + 1) + ' correcta'" />
+          <input class="input" [value]="o" [attr.maxlength]="limits.option" (input)="draftOption(i, value($event))"
+                 [attr.aria-label]="'Respuesta ' + (i + 1)" />
+          <button type="button" class="icon-btn" (click)="removeOption(i)" [disabled]="d.options.length <= 2"
+                  [attr.aria-label]="'Quitar respuesta ' + (i + 1)">
+            <app-icon name="x" [size]="16" />
+          </button>
+        </div>
+      }
+      @if (d.options.length < 6) {
+        <button type="button" class="btn btn-ghost btn-sm" (click)="addOption()">
+          <app-icon name="plus" [size]="16" /> Añadir respuesta
+        </button>
+      }
+    </fieldset>
+    <button type="button" class="btn btn-primary btn-lg btn-block" (click)="commitQuestion()" [disabled]="!draftValid()">
+      {{ editingQuestion() === 'new' ? 'Añadir pregunta' : 'Aplicar cambios' }}
+    </button>
+    @if (editingQuestion() !== 'new') {
+      <button type="button" class="btn btn-danger-ghost btn-block" (click)="removeQuestion()">
+        <app-icon name="trash" [size]="18" /> Eliminar pregunta
+      </button>
+    }
+  </div>
+</app-sheet>

@@ -25,6 +25,8 @@
           <div class="meta">
             @if (t.kind === 'simon') {
               <span class="badge badge-primary">Simón dice</span>
+            } @else if (t.kind === 'disk') {
+              <span class="badge badge-primary"><app-icon name="disk" [size]="12" /> Recupera el archivo</span>
             } @else {
               <span class="badge"><app-icon name="timer" [size]="12" /> Cronómetro</span>
             }
@@ -34,6 +36,11 @@
           </div>
           @if (t.description) {
             <p class="desc small muted">{{ t.description }}</p>
+          }
+          @if (t.kind === 'disk') {
+            <a class="btn btn-outline btn-sm disk-link" [routerLink]="['/juez/disco', t.id]">
+              <app-icon name="disk" [size]="16" /> Preparar y seguir la prueba
+            </a>
           }
         </div>
         <div class="actions">
@@ -100,9 +107,16 @@
           <input type="radio" formControlName="kind" value="simon" />
           <span class="simon-dot" aria-hidden="true"></span> Simón dice
         </label>
+        <label [class.on]="form.controls.kind.value === 'disk'">
+          <input type="radio" formControlName="kind" value="disk" />
+          <app-icon name="disk" [size]="18" /> Archivo
+        </label>
       </div>
       <span class="hint">
-        @if (form.controls.kind.value === 'simon') {
+        @if (form.controls.kind.value === 'disk') {
+          "Recupera el archivo": los grupos siguen una cadena de sectores (tarjetas QR escondidas) respondiendo
+          preguntas desde su móvil y reconstruyen el archivo. Tras guardar, prepárala desde "Preparar y seguir la prueba".
+        } @else if (form.controls.kind.value === 'simon') {
           Se juega en la pantalla /simon, donde eliges dificultad, rondas y penalización antes de empezar. El tiempo
           corre hasta superar todas las rondas; cada fallo suma la penalización y repite la ronda.
         } @else {

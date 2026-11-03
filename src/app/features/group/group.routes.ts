@@ -12,6 +12,12 @@ export const GROUP_ROUTES: Routes = [
         loadComponent: () =>
           import('./dashboard/group-dashboard.page').then((m) => m.GroupDashboardPage),
       },
+      {
+        // Prueba "Recupera el archivo". Los QR de las tarjetas apuntan aquí (?s=código).
+        path: 'disco/:testId',
+        title: 'Recupera el archivo · Yincana PC',
+        loadComponent: () => import('./disk/group-disk.page').then((m) => m.GroupDiskPage),
+      },
     ],
   },
 ];

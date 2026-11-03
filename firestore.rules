@@ -167,7 +167,8 @@ service cloud.firestore {
     // ------------------------------------------------------------------ tests
     // tests/{testId}: { name, description, order, active, kind, createdAt, updatedAt }
     // kind 'timer': se cronometra. kind 'simon': Simón dice (dificultad, rondas y
-    // penalización se eligen al empezar cada partida).
+    // penalización se eligen al empezar cada partida). kind 'disk': "Recupera el
+    // archivo" (ver la sección disk* más abajo).
 
     function validTest(d) {
       return hasExactly(d, ['name', 'description', 'order', 'active', 'kind', 'createdAt', 'updatedAt'])
@@ -175,7 +176,7 @@ service cloud.firestore {
         && isText(d.description, 0, 1000)
         && d.order is int
         && d.active is bool
-        && d.kind in ['timer', 'simon']
+        && d.kind in ['timer', 'simon', 'disk']
         && d.updatedAt == request.time;
     }
 
@@ -290,6 +291,112 @@ service cloud.firestore {
       allow read: if isJudge();
       allow create: if isJudge() && validAudit(logId, incoming());
       allow update, delete: if false;
+    }
+
+    // ------------------------------------------------------------------- disk
+    // Prueba "Recupera el archivo" (kind 'disk'). runId = testId + '__' + groupId.
+    // Los jueces generan los discos; el grupo SOLO escribe su propia partida
+    // (diskRuns/{runId}) y cada avance se valida contra diskSecrets/{runId},
+    // que el grupo no puede leer: sin el código de la tarjeta o la respuesta
+    // correcta no se avanza. Las preguntas y los fragmentos se van desbloqueando
+    // según el avance de la partida.
+
+    function diskRunOf(d) {
+      return get(docPath('diskRuns', d.testId + '__' + d.groupId)).data;
+    }
+
+    function ownDiskDoc() {
+      return isGroupUser() && resource.data.groupId == myGroupId();
+    }
+
+    // Por ID (testId__groupId): así el grupo puede consultar su documento aunque
+    // todavía no exista (p. ej. antes de que se genere su disco o de empezar).
+    function ownRunId(runId) {
+      return isGroupUser() && runId.split('__').size() == 2 && runId.split('__')[1] == myGroupId();
+    }
+
+    // Configuración (sectores, códigos, preguntas con respuesta) y secretos: solo jueces.
+    match /diskConfigs/{testId} {
+      allow read, write: if isJudge();
+    }
+
+    match /diskSecrets/{runId} {
+      allow read, write: if isJudge();
+    }
+
+    // Disco listo: número de sectores y penalización.
+    match /diskInfos/{runId} {
+      allow read: if isJudge() || ownRunId(runId);
+      allow write: if isJudge();
+    }
+
+    // Pregunta del sector i: visible cuando el grupo ha escaneado ese sector.
+    match /diskSteps/{id} {
+      allow read: if isJudge() || (ownDiskDoc() && diskRunOf(resource.data).found > resource.data.index);
+      allow write: if isJudge();
+    }
+
+    // Fragmento y puntero: visible cuando el grupo ha leído (acertado) el sector anterior.
+    match /diskReveals/{id} {
+      allow read: if isJudge() || (ownDiskDoc() && diskRunOf(resource.data).step >= resource.data.index);
+      allow write: if isJudge();
+    }
+
+    // diskRuns/{runId}: { testId, groupId, startedAt, found, step, wrong,
+    //                     lastCode, lastAnswer, finishedAt }
+
+    function validDiskStart(runId) {
+      let d = incoming();
+      return hasExactly(d, ['testId', 'groupId', 'startedAt', 'found', 'step', 'wrong',
+                            'lastCode', 'lastAnswer', 'finishedAt'])
+        && d.groupId == myGroupId()
+        && d.testId is string
+        && runId == d.testId + '__' + d.groupId
+        && exists(docPath('diskSecrets', runId))
+        && get(docPath('tests', d.testId)).data.active == true
+        && get(docPath('tests', d.testId)).data.kind == 'disk'
+        && get(docPath('groups', d.groupId)).data.active == true
+        && d.startedAt == request.time
+        && d.found == 0 && d.step == 0 && d.wrong == 0
+        && d.lastCode == null && d.lastAnswer == null && d.finishedAt == null;
+    }
+
+    function validDiskMove(runId) {
+      let r = resource.data;
+      let d = incoming();
+      let s = get(docPath('diskSecrets', runId)).data;
+      let changed = d.diff(r).affectedKeys();
+      return r.groupId == myGroupId()
+        && r.finishedAt == null
+        && (
+          // Sector encontrado: el código es el de la tarjeta que toca.
+          (changed.hasOnly(['found', 'lastCode'])
+            && r.found == r.step && r.step < s.count
+            && d.found == r.found + 1
+            && d.lastCode == s.codes[r.step])
+          // Pregunta acertada: se lee el sector.
+          || (changed.hasOnly(['step', 'lastAnswer'])
+            && r.found == r.step + 1
+            && d.step == r.step + 1
+            && d.lastAnswer == s.answers[r.step])
+          // Fallo (pregunta o archivo final): solo puede sumar.
+          || (changed.hasOnly(['wrong', 'lastAnswer'])
+            && (r.found == r.step + 1 || r.step == s.count)
+            && d.wrong == r.wrong + 1)
+          // Archivo reconstruido: termina la partida.
+          || (changed.hasOnly(['finishedAt', 'lastAnswer'])
+            && r.step == s.count
+            && d.lastAnswer == s.file
+            && d.finishedAt == request.time)
+        );
+    }
+
+    match /diskRuns/{runId} {
+      allow read: if isJudge() || ownRunId(runId);
+      allow create: if isGroupUser() && validDiskStart(runId);
+      allow update: if isGroupUser() && validDiskMove(runId);
+      // Reiniciar una partida o regenerar los discos.
+      allow delete: if isJudge();
     }
 
     // --------------------------------------------------------------- settings

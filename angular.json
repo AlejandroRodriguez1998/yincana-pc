@@ -33,7 +33,8 @@
             "styles": ["src/styles.scss"],
             "stylePreprocessorOptions": {
               "includePaths": ["src/styles"]
-            }
+            },
+            "allowedCommonJsDependencies": ["jsqr", "qrcode-generator"]
           },
           "configurations": {
             "production": {

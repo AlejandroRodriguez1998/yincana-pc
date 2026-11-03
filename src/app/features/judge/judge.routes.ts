@@ -49,6 +49,11 @@ export const JUDGE_ROUTES: Routes = [
             loadComponent: () => import('./tests/tests.page').then((m) => m.TestsPage),
           },
           {
+            path: 'disco/:testId',
+            title: 'Recupera el archivo · Yincana PC',
+            loadComponent: () => import('./disk/disk.page').then((m) => m.DiskPage),
+          },
+          {
             path: 'historial',
             title: 'Historial · Yincana PC',
             loadComponent: () => import('./history/history.page').then((m) => m.HistoryPage),

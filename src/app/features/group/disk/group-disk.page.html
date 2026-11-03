@@ -1,0 +1,182 @@
+<header class="topbar">
+  <a routerLink="/grupo" class="icon-btn" aria-label="Volver a mi grupo"><app-icon name="chevron-left" /></a>
+  <div class="title grow truncate">{{ test()?.name ?? 'Recupera el archivo' }}</div>
+  @if (run(); as r) {
+    <div class="clock" aria-label="Tiempo">
+      <app-icon name="timer" [size]="16" />
+      <span class="mono">{{ elapsed() | duration: false }}</span>
+      @if (r.wrong > 0) {
+        <span class="pen mono">+{{ penaltyMs() | duration: false }}</span>
+      }
+    </div>
+  }
+</header>
+
+<div class="page">
+  @if (loadError() ?? store.error(); as error) {
+    <app-error-state [message]="error" />
+  }
+
+  @if (loading()) {
+    <div class="skeleton" style="height: 220px; border-radius: 20px"></div>
+  } @else if (!test() || test()!.kind !== 'disk') {
+    <app-empty-state icon="tests" heading="Prueba no disponible" text="Esta prueba no existe o no es de este tipo." />
+  } @else if (!info()) {
+    <app-empty-state icon="disk" heading="Vuestro disco aún no está preparado"
+                     text="Los jueces tienen que generar los discos. Avisad a un juez." />
+  } @else {
+    @let i = info()!;
+
+    <!-- Progreso: un bloque por sector del archivo -->
+    @if (run(); as r) {
+      <div class="track" aria-label="Sectores leídos">
+        @for (n of range(i.count); track n) {
+          <span [class.read]="n < r.step" [class.cur]="n === r.step && !r.finishedAt"></span>
+        }
+      </div>
+    }
+
+    @switch (phase()) {
+      @case (null) {
+        <section class="hero">
+          <app-icon name="disk" [size]="40" />
+          <h1>Recupera el archivo</h1>
+          <p>
+            Vuestro archivo está <b>fragmentado en {{ i.count }} sectores</b> escondidos por el centro. Cada sector
+            os dice dónde está el siguiente, como la tabla FAT de un disco.
+          </p>
+          <ol class="how">
+            <li>Mirad en la <b>FAT</b> (la tabla de la pared) dónde está el sector que toca.</li>
+            <li>Encontrad su tarjeta y <b>escanead el QR</b> (o escribid el código).</li>
+            <li>Responded la pregunta para <b>leer el sector</b>: veréis su trozo de archivo y el siguiente sector.</li>
+            <li>Al final, <b>reconstruid el archivo</b> siguiendo los punteros.</li>
+          </ol>
+          <p class="small">
+            Cada respuesta fallada es un error de lectura: <b>+{{ i.penaltyMs / 1000 }} s</b>. El tiempo empieza al
+            montar el disco.
+          </p>
+          @if (!test()!.active) {
+            <p class="warn">La prueba aún no está activa. Esperad a que os den la salida.</p>
+          }
+          <button type="button" class="btn btn-lg btn-block start" (click)="start()" [disabled]="busy() || !test()!.active">
+            <app-icon name="play" [size]="20" /> {{ busy() ? 'Montando…' : 'Montar disco y empezar' }}
+          </button>
+        </section>
+      }
+
+      @case ('locate') {
+        <section class="panel locate">
+          @if (lastRead(); as b) {
+            <p class="read-ok" aria-live="polite">
+              <app-icon name="check" [size]="16" [stroke]="3" />
+              Sector <b class="mono">{{ b.label }}</b> leído: <b class="mono">{{ b.fragment }}</b>
+            </p>
+          }
+          <p class="kicker">{{ run()!.step === 0 ? 'El archivo empieza en el sector' : 'Siguiente sector' }}</p>
+          <p class="target mono">{{ target() ?? '…' }}</p>
+          <p class="small muted">Buscad en la FAT dónde está y encontrad su tarjeta.</p>
+
+          @if (scanning()) {
+            <app-qr-scanner (scanned)="onScanned($event)" />
+            <button type="button" class="btn btn-ghost btn-block" (click)="scanning.set(false)">Cancelar</button>
+          } @else {
+            <button type="button" class="btn btn-primary btn-lg btn-block" (click)="scanning.set(true)" [disabled]="busy()">
+              <app-icon name="scan" [size]="20" /> Escanear QR
+            </button>
+          }
+
+          <form class="code-form" (submit)="$event.preventDefault(); submitTyped()">
+            <input class="input mono" [value]="codeText()" (input)="codeText.set(value($event))" placeholder="o escribe el código: ABC-123"
+                   autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Código de la tarjeta" />
+            <button type="submit" class="btn btn-outline" [disabled]="busy()">{{ busy() ? '…' : 'Leer' }}</button>
+          </form>
+          @if (codeError(); as e) {
+            <p class="form-error" aria-live="assertive">{{ e }}</p>
+          }
+        </section>
+      }
+
+      @case ('question') {
+        <section class="panel">
+          <p class="kicker">Sector <span class="mono">{{ target() }}</span> encontrado · leyendo…</p>
+          @if (question(); as q) {
+            <h2 class="q">{{ q.question }}</h2>
+            <div class="options">
+              @for (o of q.options; track $index; let n = $index) {
+                <button type="button" class="option" [class.wrong]="isWrong(n)" (click)="answer(n)"
+                        [disabled]="busy() || isWrong(n)">
+                  <span class="letter">{{ optionLetter(n) }}</span>
+                  <span class="grow">{{ o }}</span>
+                  @if (isWrong(n)) {
+                    <app-icon name="x" [size]="18" />
+                  }
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="skeleton" style="height: 200px"></div>
+          }
+        </section>
+      }
+
+      @case ('rebuild') {
+        <section class="panel">
+          <p class="kicker">Todos los sectores leídos</p>
+          <h2>Reconstruid el archivo</h2>
+          <p class="small muted">
+            El mapa muestra los bloques en el orden en que están en el disco, no en el del archivo. Empezad por el
+            sector inicial (<b class="mono">{{ startLabel() }}</b>) y seguid los punteros.
+          </p>
+          <form class="stack-sm" (submit)="$event.preventDefault(); submitFile()">
+            <input class="input mono file-input" inputmode="numeric" autocomplete="off" [value]="fileText()"
+                   (input)="fileText.set(value($event))" [placeholder]="'Archivo de ' + i.count * i.fragmentDigits + ' cifras'"
+                   aria-label="Archivo reconstruido" />
+            <button type="submit" class="btn btn-primary btn-lg btn-block" [disabled]="busy()">
+              <app-icon name="check" [size]="20" /> {{ busy() ? 'Comprobando…' : 'Entregar archivo' }}
+            </button>
+          </form>
+        </section>
+      }
+
+      @case ('done') {
+        <section class="hero done">
+          <app-icon name="trophy" [size]="40" />
+          <h1>¡Archivo recuperado!</h1>
+          <p class="big mono">{{ elapsed() | duration }}</p>
+          @if (run()!.wrong > 0) {
+            <p>{{ run()!.wrong }} errores de lectura: +{{ penaltyMs() | duration: false }} de penalización</p>
+          } @else {
+            <p>¡Sin errores de lectura!</p>
+          }
+          <p class="small">Un juez registrará vuestro tiempo.</p>
+          <a routerLink="/grupo" class="btn btn-lg btn-block start">Volver a mi grupo</a>
+        </section>
+      }
+    }
+
+    <!-- Mapa del disco: bloques leídos en orden físico -->
+    @if (run() && phase() !== 'done') {
+      <section class="stack-sm">
+        <div class="section-title">
+          <span>Mapa del disco</span>
+          @if (startLabel(); as s) {
+            <span class="small muted">Inicio: <b class="mono">{{ s }}</b></span>
+          }
+        </div>
+        @if (blocks().length === 0) {
+          <p class="small muted">Aquí aparecerán los sectores que vayáis leyendo.</p>
+        } @else {
+          <ul class="blocks">
+            @for (b of blocks(); track b.label) {
+              <li>
+                <span class="b-label mono">{{ b.label }}</span>
+                <span class="b-data mono">{{ b.fragment }}</span>
+                <span class="b-next mono">→ {{ b.next ?? 'FIN' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  }
+</div>

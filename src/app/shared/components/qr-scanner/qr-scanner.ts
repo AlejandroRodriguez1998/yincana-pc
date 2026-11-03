@@ -1,0 +1,176 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  inject,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
+
+/** API nativa (Chrome/Android). En iOS/Safari no existe y se usa jsQR. */
+interface NativeBarcodeDetector {
+  detect(source: CanvasImageSource): Promise<{ rawValue: string }[]>;
+}
+type BarcodeDetectorCtor = new (options: { formats: string[] }) => NativeBarcodeDetector;
+
+type Decoder = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => Promise<string | null>;
+
+async function createDecoder(): Promise<Decoder> {
+  const Native = (globalThis as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
+  if (Native) {
+    try {
+      const detector = new Native({ formats: ['qr_code'] });
+      return async (canvas) => (await detector.detect(canvas))[0]?.rawValue ?? null;
+    } catch {
+      // Formato no soportado: se usa jsQR.
+    }
+  }
+  const { default: jsQR } = await import('jsqr');
+  return async (canvas, ctx) => {
+    const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    return jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' })?.data ?? null;
+  };
+}
+
+/** Lector de QR con la cámara trasera. Emite el texto del primer código leído. */
+@Component({
+  selector: 'app-qr-scanner',
+  template: `
+    <div class="frame">
+      <video #video playsinline muted></video>
+      <span class="aim" aria-hidden="true"></span>
+      @if (status() === 'starting') {
+        <p class="msg">Abriendo la cámara…</p>
+      } @else if (status() === 'error') {
+        <p class="msg">{{ error() }}</p>
+      }
+    </div>
+  `,
+  styles: `
+    .frame {
+      position: relative;
+      aspect-ratio: 1;
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: #000;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .aim {
+      position: absolute;
+      inset: 18%;
+      border: 3px solid rgba(255, 255, 255, 0.85);
+      border-radius: 18px;
+      box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35);
+    }
+    .msg {
+      position: absolute;
+      inset: auto 12px 12px;
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class QrScanner {
+  readonly scanned = output<string>();
+
+  private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
+  protected readonly status = signal<'starting' | 'scanning' | 'error'>('starting');
+  protected readonly error = signal('');
+
+  private stream: MediaStream | null = null;
+  private stopped = false;
+  private timer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.stop());
+    afterNextRender(() => void this.start());
+  }
+
+  private async start(): Promise<void> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.fail('Este navegador no permite usar la cámara. Escribe el código de la tarjeta.');
+      return;
+    }
+    try {
+      const [stream, decode] = await Promise.all([
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }),
+        createDecoder(),
+      ]);
+      if (this.stopped) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      this.stream = stream;
+      const video = this.video().nativeElement;
+      video.srcObject = stream;
+      await video.play();
+      this.status.set('scanning');
+      this.loop(video, decode);
+    } catch (err) {
+      const denied = err instanceof DOMException && err.name === 'NotAllowedError';
+      this.fail(
+        denied
+          ? 'Sin permiso para usar la cámara. Actívalo en el navegador o escribe el código de la tarjeta.'
+          : 'No se ha podido abrir la cámara. Escribe el código de la tarjeta.',
+      );
+    }
+  }
+
+  private loop(video: HTMLVideoElement, decode: Decoder): void {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return this.fail('No se puede leer la imagen de la cámara.');
+
+    const tick = async () => {
+      if (this.stopped) return;
+      if (video.readyState >= video.HAVE_ENOUGH_DATA && video.videoWidth) {
+        // Se escala a ~640 px: suficiente para un QR y mucho más rápido.
+        const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        try {
+          const text = await decode(canvas, ctx);
+          if (text && !this.stopped) {
+            navigator.vibrate?.(60);
+            this.scanned.emit(text);
+            this.stop();
+            return;
+          }
+        } catch {
+          // Fotograma ilegible: se sigue intentando.
+        }
+      }
+      this.timer = setTimeout(() => void tick(), 150);
+    };
+    void tick();
+  }
+
+  private fail(message: string): void {
+    this.error.set(message);
+    this.status.set('error');
+  }
+
+  private stop(): void {
+    this.stopped = true;
+    if (this.timer) clearTimeout(this.timer);
+    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream = null;
+  }
+}

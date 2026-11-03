@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { DiskService } from '../../../core/data/disk.service';
 import { TestsService } from '../../../core/data/tests.service';
 import { describeError } from '../../../core/firebase/errors';
 import {
@@ -19,7 +21,7 @@ import { JudgeStore } from '../judge.store';
 
 @Component({
   selector: 'app-tests-page',
-  imports: [ReactiveFormsModule, Icon, Sheet, EmptyState, ErrorState],
+  imports: [ReactiveFormsModule, RouterLink, Icon, Sheet, EmptyState, ErrorState],
   templateUrl: './tests.page.html',
   styleUrl: './tests.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,6 +29,7 @@ import { JudgeStore } from '../judge.store';
 export class TestsPage {
   protected readonly store = inject(JudgeStore);
   private readonly testsService = inject(TestsService);
+  private readonly disk = inject(DiskService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
 
@@ -137,6 +140,10 @@ export class TestsPage {
     this.saving.set(true);
     try {
       const removed = await this.testsService.delete(test, this.store.feed.tests());
+      if (test.kind === 'disk') {
+        // Sectores, preguntas y partidas de la prueba de disco.
+        await this.disk.purge(test.id).catch(() => undefined);
+      }
       this.editing.set(null);
       this.toast.success(`Prueba eliminada (${removed} resultados borrados).`);
     } catch (err) {
