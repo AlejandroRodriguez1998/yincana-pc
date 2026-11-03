@@ -17,6 +17,8 @@ import { COLLECTIONS } from '../../../core/data/paths';
 import { describeError } from '../../../core/firebase/errors';
 import { FIRESTORE } from '../../../core/firebase/firebase.providers';
 import { DiskInfo, DiskRun, DiskSecret, MAX_TIME_MS, diskPhase, diskRunId } from '../../../core/models';
+import { ConfirmService } from '../../../core/ui/confirm.service';
+import { ToastService } from '../../../core/ui/toast.service';
 import { Icon } from '../../../shared/components/icon/icon';
 import { DurationPipe } from '../../../shared/pipes/duration.pipe';
 
@@ -78,14 +80,28 @@ export interface DiskRunResult {
             <app-icon name="check" /> Registrar {{ res.timeMs + res.penaltyMs | duration }}
           }
         </button>
+      } @else if (!run()) {
+        @if (i.unlocked) {
+          <p class="hint">
+            Acceso dado: el tiempo empieza cuando el grupo pulsa "Montar disco" en su móvil.
+          </p>
+          <button type="button" class="btn btn-ghost btn-block" (click)="setAccess(false)" [disabled]="busy()">
+            <app-icon name="eye-off" [size]="18" /> Quitar acceso
+          </button>
+        } @else {
+          <button type="button" class="btn btn-primary btn-lg btn-block" (click)="setAccess(true)" [disabled]="busy()">
+            <app-icon name="play" [size]="20" /> Dar acceso al grupo
+          </button>
+          <p class="hint">Hasta que no le des acceso, el grupo no puede empezar la partida.</p>
+        }
       } @else {
-        <p class="hint">
-          @if (!run()) {
-            El tiempo empieza cuando el grupo pulsa "Montar disco" en su móvil.
-          } @else {
-            Cuando el grupo entregue el archivo correcto podrás registrar su tiempo aquí.
-          }
-        </p>
+        <p class="hint">Cuando el grupo entregue el archivo correcto podrás registrar su tiempo aquí.</p>
+      }
+
+      @if (run()) {
+        <button type="button" class="btn btn-danger-ghost btn-sm reset" (click)="reset()" [disabled]="busy() || saving()">
+          <app-icon name="reset" [size]="16" /> Reiniciar partida
+        </button>
       }
     }
   `,
@@ -118,6 +134,9 @@ export interface DiskRunResult {
       font-weight: 800;
       line-height: 1.1;
     }
+    .reset {
+      align-self: center;
+    }
     .sectors {
       display: flex;
       gap: 4px;
@@ -142,6 +161,8 @@ export interface DiskRunResult {
 export class DiskRunPanel {
   private readonly db = inject(FIRESTORE);
   private readonly disk = inject(DiskService);
+  private readonly confirm = inject(ConfirmService);
+  private readonly toast = inject(ToastService);
 
   readonly testId = input.required<string>();
   readonly groupId = input.required<string>();
@@ -154,6 +175,7 @@ export class DiskRunPanel {
   private readonly pending = signal(3);
   protected readonly loaded = computed(() => this.pending() === 0);
   protected readonly error = signal<string | null>(null);
+  protected readonly busy = signal(false);
   private readonly now = signal(Date.now());
 
   protected readonly phase = computed(() => {
@@ -253,6 +275,39 @@ export class DiskRunPanel {
       });
       onCleanup(() => subs.forEach((u) => u()));
     });
+  }
+
+  protected async setAccess(unlocked: boolean): Promise<void> {
+    this.busy.set(true);
+    try {
+      await this.disk.setUnlocked(this.testId(), [this.groupId()], unlocked);
+      this.toast.success(unlocked ? 'Acceso dado: ya pueden empezar.' : 'Acceso quitado.');
+    } catch (err) {
+      this.toast.error(describeError(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async reset(): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: 'Reiniciar partida',
+      message:
+        'Se borrará el avance del grupo y volverá a "sin empezar", sin acceso, con el mismo disco. ' +
+        'Si ya tenía tiempo registrado, no se toca.',
+      confirmLabel: 'Reiniciar',
+      danger: true,
+    });
+    if (!ok) return;
+    this.busy.set(true);
+    try {
+      await this.disk.resetRun(this.testId(), this.groupId());
+      this.toast.success('Partida reiniciada. Dale acceso cuando estén listos.');
+    } catch (err) {
+      this.toast.error(describeError(err));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected range(n: number): number[] {

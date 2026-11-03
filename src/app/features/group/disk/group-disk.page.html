@@ -57,10 +57,16 @@
           </p>
           @if (!test()!.active) {
             <p class="warn">La prueba aún no está activa. Esperad a que os den la salida.</p>
+          } @else if (!i.unlocked) {
+            <p class="warn waiting">
+              <app-icon name="eye-off" [size]="18" />
+              Esperad a que un juez os dé acceso. Entonces aparecerá aquí el botón para empezar.
+            </p>
+          } @else {
+            <button type="button" class="btn btn-lg btn-block start" (click)="start()" [disabled]="busy()">
+              <app-icon name="play" [size]="20" /> {{ busy() ? 'Montando…' : 'Montar disco y empezar' }}
+            </button>
           }
-          <button type="button" class="btn btn-lg btn-block start" (click)="start()" [disabled]="busy() || !test()!.active">
-            <app-icon name="play" [size]="20" /> {{ busy() ? 'Montando…' : 'Montar disco y empezar' }}
-          </button>
         </section>
       }
 

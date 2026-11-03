@@ -7,7 +7,6 @@ import {
   Timestamp,
   WriteBatch,
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocFromServer,
@@ -105,6 +104,7 @@ export function toDiskInfo(snapshot: DocumentSnapshot): DiskInfo {
     count: int(d['count']),
     penaltyMs: int(d['penaltyMs']),
     fragmentDigits: int(d['fragmentDigits']) || DISK_DEFAULTS.fragmentDigits,
+    unlocked: d['unlocked'] === true,
   };
 }
 
@@ -266,6 +266,8 @@ export class DiskService {
           count: disk.codes.length,
           penaltyMs,
           fragmentDigits: config.fragmentDigits,
+          // Cerrado hasta que un juez dé acceso.
+          unlocked: false,
           createdAt: serverTimestamp(),
         }),
       );
@@ -281,10 +283,24 @@ export class DiskService {
     await commitChunked(this.db, ops);
   }
 
-  /** Borra la partida de un grupo: vuelve a "sin empezar" con el mismo disco. */
+  /** Da o quita acceso a un grupo para empezar la partida. */
+  async setUnlocked(testId: string, groupIds: readonly string[], unlocked: boolean): Promise<void> {
+    this.actor.requireJudge();
+    const batch = writeBatch(this.db);
+    groupIds.forEach((groupId) => batch.update(this.infoRef(testId, groupId), { unlocked }));
+    await batch.commit();
+  }
+
+  /**
+   * Borra la partida de un grupo: vuelve a "sin empezar" con el mismo disco
+   * y sin acceso, hasta que un juez se lo vuelva a dar.
+   */
   async resetRun(testId: string, groupId: string): Promise<void> {
     this.actor.requireJudge();
-    await deleteDoc(this.runRef(testId, groupId));
+    const batch = writeBatch(this.db);
+    batch.delete(this.runRef(testId, groupId));
+    batch.update(this.infoRef(testId, groupId), { unlocked: false });
+    await batch.commit();
   }
 
   /** Borra todos los datos de la prueba de disco (al eliminar la prueba). */
@@ -322,7 +338,7 @@ export class DiskService {
       });
     } catch (err) {
       if (isDenied(err)) {
-        throw new AppError('No se puede empezar: la prueba no está activa o el disco ha cambiado. Avisa a un juez.');
+        throw new AppError('No se puede empezar todavía: esperad a que un juez os dé acceso.');
       }
       throw err;
     }

@@ -11,7 +11,8 @@
  * - diskConfigs/{testId}     Solo jueces. Sectores físicos, banco de preguntas y ajustes.
  * - diskSecrets/{runId}      Solo jueces. Códigos, respuestas y archivo de cada grupo.
  *                            Las reglas lo usan para validar el avance del grupo.
- * - diskInfos/{runId}        El grupo: que su disco está listo, nº de sectores y penalización.
+ * - diskInfos/{runId}        El grupo: que su disco está listo, nº de sectores, penalización y si
+ *                            un juez le ha dado acceso (`unlocked`) para empezar.
  * - diskSteps/{runId}__{i}   Pregunta del sector i. El grupo la lee tras escanear ese sector.
  * - diskReveals/{runId}__{i} i = 0: sector inicial. i > 0: fragmento del sector i-1 y
  *                            puntero al siguiente. El grupo la lee tras acertar la pregunta.
@@ -69,6 +70,8 @@ export interface DiskInfo {
   readonly count: number;
   readonly penaltyMs: number;
   readonly fragmentDigits: number;
+  /** Un juez ha dado acceso: el grupo ya puede montar el disco y empezar. */
+  readonly unlocked: boolean;
 }
 
 export interface DiskStep {

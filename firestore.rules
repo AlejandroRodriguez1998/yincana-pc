@@ -324,7 +324,7 @@ service cloud.firestore {
       allow read, write: if isJudge();
     }
 
-    // Disco listo: número de sectores y penalización.
+    // Disco listo: número de sectores, penalización y acceso (unlocked, lo da un juez).
     match /diskInfos/{runId} {
       allow read: if isJudge() || ownRunId(runId);
       allow write: if isJudge();
@@ -353,6 +353,8 @@ service cloud.firestore {
         && d.testId is string
         && runId == d.testId + '__' + d.groupId
         && exists(docPath('diskSecrets', runId))
+        // Un juez tiene que haber dado acceso al grupo.
+        && get(docPath('diskInfos', runId)).data.unlocked == true
         && get(docPath('tests', d.testId)).data.active == true
         && get(docPath('tests', d.testId)).data.kind == 'disk'
         && get(docPath('groups', d.groupId)).data.active == true

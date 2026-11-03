@@ -136,7 +136,7 @@ export class DiskPage {
       let tone: GroupRow['tone'] = 'idle';
       let result: GroupRow['result'] = null;
       if (info && !run) {
-        status = 'Disco listo · sin empezar';
+        status = info.unlocked ? 'Acceso dado · esperando a que empiecen' : 'Disco listo · sin acceso';
       } else if (info && run) {
         const phase = diskPhase(run, info.count);
         const label = secret?.labels[run.step] ?? '¿?';
@@ -172,6 +172,8 @@ export class DiskPage {
   });
   protected readonly missing = computed(() => this.rows().filter((r) => !r.info).map((r) => r.group));
   protected readonly started = computed(() => this.rows().filter((r) => r.run).length);
+  /** Grupos con disco, sin empezar y sin acceso. */
+  protected readonly locked = computed(() => this.rows().filter((r) => r.info && !r.info.unlocked && !r.run));
   protected readonly toRecord = computed(() => this.rows().filter((r) => r.result && !r.recorded));
 
   // ---------- Configuración (borrador local) ----------
@@ -367,10 +369,33 @@ export class DiskPage {
     }
   }
 
+  protected async setAccess(rows: readonly GroupRow[], unlocked: boolean): Promise<void> {
+    if (rows.length === 0) return;
+    this.busy.set(rows.length === 1 ? rows[0].group.id : 'access');
+    try {
+      await this.disk.setUnlocked(
+        this.testId(),
+        rows.map((r) => r.group.id),
+        unlocked,
+      );
+      this.toast.success(
+        rows.length === 1
+          ? `${rows[0].group.name}: ${unlocked ? 'acceso dado' : 'acceso quitado'}.`
+          : `Acceso dado a ${rows.length} grupos.`,
+      );
+    } catch (err) {
+      this.toast.error(describeError(err));
+    } finally {
+      this.busy.set(null);
+    }
+  }
+
   protected async reset(row: GroupRow): Promise<void> {
     const ok = await this.confirm.ask({
       title: `Reiniciar a ${row.group.name}`,
-      message: 'Se borrará su avance y volverá a "sin empezar" con el mismo disco. El tiempo registrado (si lo hay) no se toca.',
+      message:
+        'Se borrará su avance y volverá a "sin empezar", sin acceso, con el mismo disco. ' +
+        'El tiempo registrado (si lo hay) no se toca.',
       confirmLabel: 'Reiniciar',
       danger: true,
     });
@@ -378,7 +403,7 @@ export class DiskPage {
     this.busy.set(row.group.id);
     try {
       await this.disk.resetRun(this.testId(), row.group.id);
-      this.toast.success(`${row.group.name}: partida reiniciada.`);
+      this.toast.success(`${row.group.name}: partida reiniciada. Dale acceso cuando estén listos.`);
     } catch (err) {
       this.toast.error(describeError(err));
     } finally {
