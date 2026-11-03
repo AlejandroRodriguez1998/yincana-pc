@@ -14,26 +14,52 @@ import {
 interface NativeBarcodeDetector {
   detect(source: CanvasImageSource): Promise<{ rawValue: string }[]>;
 }
-type BarcodeDetectorCtor = new (options: { formats: string[] }) => NativeBarcodeDetector;
+interface BarcodeDetectorCtor {
+  new (options: { formats: string[] }): NativeBarcodeDetector;
+  getSupportedFormats?(): Promise<string[]>;
+}
 
 type Decoder = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => Promise<string | null>;
 
-async function createDecoder(): Promise<Decoder> {
+/** Lector nativo, solo si existe y declara soportar QR (en iOS/Safari no existe). */
+async function nativeDecoder(): Promise<Decoder | null> {
   const Native = (globalThis as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
-  if (Native) {
-    try {
-      const detector = new Native({ formats: ['qr_code'] });
-      return async (canvas) => (await detector.detect(canvas))[0]?.rawValue ?? null;
-    } catch {
-      // Formato no soportado: se usa jsQR.
-    }
+  if (!Native) return null;
+  try {
+    const formats = (await Native.getSupportedFormats?.()) ?? ['qr_code'];
+    if (!formats.includes('qr_code')) return null;
+    const detector = new Native({ formats: ['qr_code'] });
+    return async (canvas) => (await detector.detect(canvas))[0]?.rawValue ?? null;
+  } catch {
+    return null;
   }
-  const { default: jsQR } = await import('jsqr');
-  return async (canvas, ctx) => {
+}
+
+/**
+ * Nativo y jsQR combinados: si el nativo no encuentra nada (o falla) en un
+ * fotograma, lo intenta jsQR. Así un BarcodeDetector defectuoso no deja el
+ * lector "mudo".
+ */
+async function createDecoder(): Promise<Decoder> {
+  const [native, { default: jsQR }] = await Promise.all([nativeDecoder(), import('jsqr')]);
+  const fallback: Decoder = async (canvas, ctx) => {
     const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    return jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' })?.data ?? null;
+    return jsQR(image.data, image.width, image.height, { inversionAttempts: 'attemptBoth' })?.data ?? null;
+  };
+  if (!native) return fallback;
+  return async (canvas, ctx) => {
+    try {
+      const text = await native(canvas, ctx);
+      if (text) return text;
+    } catch {
+      // Se intenta con jsQR.
+    }
+    return fallback(canvas, ctx);
   };
 }
+
+/** Lado del recorte que se analiza (px): la zona central, a buena resolución. */
+const CROP_SIZE = 720;
 
 /** Lector de QR con la cámara trasera. Emite el texto del primer código leído. */
 @Component({
@@ -67,7 +93,7 @@ async function createDecoder(): Promise<Decoder> {
     }
     .aim {
       position: absolute;
-      inset: 18%;
+      inset: 10%;
       border: 3px solid rgba(255, 255, 255, 0.85);
       border-radius: 18px;
       box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35);
@@ -109,7 +135,11 @@ export class QrScanner {
     }
     try {
       const [stream, decode] = await Promise.all([
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }),
+        navigator.mediaDevices.getUserMedia({
+          // Sin resolución "ideal" muchos móviles dan 640×480 y el QR queda en pocos píxeles.
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false,
+        }),
         createDecoder(),
       ]);
       if (this.stopped) {
@@ -140,11 +170,15 @@ export class QrScanner {
     const tick = async () => {
       if (this.stopped) return;
       if (video.readyState >= video.HAVE_ENOUGH_DATA && video.videoWidth) {
-        // Se escala a ~640 px: suficiente para un QR y mucho más rápido.
-        const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
-        canvas.width = Math.round(video.videoWidth * scale);
-        canvas.height = Math.round(video.videoHeight * scale);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Se analiza el cuadrado central (lo que se ve en el visor), sin apenas
+        // reducirlo: más detalle que la imagen entera escalada y más rápido.
+        const side = Math.min(video.videoWidth, video.videoHeight) * 0.85;
+        const sx = (video.videoWidth - side) / 2;
+        const sy = (video.videoHeight - side) / 2;
+        const size = Math.round(Math.min(side, CROP_SIZE));
+        canvas.width = size;
+        canvas.height = size;
+        ctx.drawImage(video, sx, sy, side, side, 0, 0, size, size);
         try {
           const text = await decode(canvas, ctx);
           if (text && !this.stopped) {
@@ -157,7 +191,7 @@ export class QrScanner {
           // Fotograma ilegible: se sigue intentando.
         }
       }
-      this.timer = setTimeout(() => void tick(), 150);
+      this.timer = setTimeout(() => void tick(), 100);
     };
     void tick();
   }

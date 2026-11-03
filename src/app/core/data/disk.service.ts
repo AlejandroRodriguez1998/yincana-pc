@@ -10,7 +10,9 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
+  increment,
   query,
   serverTimestamp,
   setDoc,
@@ -331,7 +333,8 @@ export class DiskService {
     const code = normalizeDiskCode(text);
     if (!code) return false;
     try {
-      await updateDoc(this.runRef(run.testId, run.groupId), { found: run.step + 1, lastCode: code });
+      // increment(): no depende de que el cliente tenga el último estado.
+      await updateDoc(this.runRef(run.testId, run.groupId), { found: increment(1), lastCode: code });
       return true;
     } catch (err) {
       if (isDenied(err)) return false;
@@ -346,12 +349,12 @@ export class DiskService {
   async answer(run: DiskRun, option: number): Promise<AnswerResult> {
     const ref = this.runRef(run.testId, run.groupId);
     try {
-      await updateDoc(ref, { step: run.step + 1, lastAnswer: option });
+      await updateDoc(ref, { step: increment(1), lastAnswer: option });
       return 'correct';
     } catch (err) {
       if (!isDenied(err)) throw err;
     }
-    await updateDoc(ref, { wrong: run.wrong + 1, lastAnswer: option });
+    await this.recordWrong(ref, option);
     return 'wrong';
   }
 
@@ -365,8 +368,25 @@ export class DiskService {
     } catch (err) {
       if (!isDenied(err)) throw err;
     }
-    await updateDoc(ref, { wrong: run.wrong + 1, lastAnswer: file });
+    await this.recordWrong(ref, file);
     return 'wrong';
+  }
+
+  private async recordWrong(ref: DocumentReference, answer: number | string): Promise<void> {
+    try {
+      await updateDoc(ref, { wrong: increment(1), lastAnswer: answer });
+    } catch (err) {
+      if (isDenied(err)) {
+        throw new AppError('La partida ha cambiado mientras respondíais. Vuelve a intentarlo.');
+      }
+      throw err;
+    }
+  }
+
+  /** Estado actual de la partida leído del servidor (para resincronizar tras un rechazo). */
+  async fetchRun(testId: string, groupId: string): Promise<DiskRun | null> {
+    const snap = await getDocFromServer(this.runRef(testId, groupId));
+    return snap.exists() ? toDiskRun(snap) : null;
   }
 
   async getStep(runId: string, index: number): Promise<DiskStep> {

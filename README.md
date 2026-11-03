@@ -186,7 +186,7 @@ En Cloudflare: *Workers & Pages → Create → Import a repository*, elige el re
 - **Recupera el archivo** (`kind: 'disk'`): simula cómo guarda un disco un archivo fragmentado.
   - **Preparación** (*Pruebas → Preparar y seguir la prueba*): se fijan los sectores físicos y dónde se esconde
     cada uno, cuántos sectores ocupa el archivo de cada grupo, la penalización y el banco de preguntas (viene
-    uno inicial sobre discos). *Imprimir* genera las tarjetas (etiqueta tipo `0x2A`, QR y código) y la tabla
+    uno inicial de cultura general). *Imprimir* genera las tarjetas (etiqueta tipo `0x2A`, QR y código) y la tabla
     FAT (sector → ubicación) para colgarla. *Generar discos* crea para cada grupo una cadena aleatoria de
     sectores, una pregunta por sector (con las respuestas barajadas) y un número que hay que reconstruir.
     Los sectores que no use un grupo le sirven de señuelo.

@@ -124,8 +124,14 @@
           <p class="kicker">Todos los sectores leídos</p>
           <h2>Reconstruid el archivo</h2>
           <p class="small muted">
-            El mapa muestra los bloques en el orden en que están en el disco, no en el del archivo. Empezad por el
-            sector inicial (<b class="mono">{{ startLabel() }}</b>) y seguid los punteros.
+            Escribid todos los fragmentos seguidos, en el orden del archivo. Empezad por el sector inicial
+            (<b class="mono">{{ startLabel() }}</b>), copiad su número y saltad al sector que indica la flecha
+            (→), hasta llegar a <b class="mono">FIN</b>.
+          </p>
+          <p class="small muted">
+            Ojo: el mapa de abajo ordena los bloques por número de sector, no en el orden del archivo.
+            Ejemplo: <span class="mono">0x1C 1234 → 0x9A</span> y <span class="mono">0x9A 5678 → FIN</span> dan
+            <span class="mono">12345678</span>.
           </p>
           <form class="stack-sm" (submit)="$event.preventDefault(); submitFile()">
             <input class="input mono file-input" inputmode="numeric" autocomplete="off" [value]="fileText()"

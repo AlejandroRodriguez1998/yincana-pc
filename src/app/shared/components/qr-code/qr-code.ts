@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import qrcode from 'qrcode-generator';
 
-const MARGIN = 2;
+/** Zona blanca alrededor: el estándar QR pide 4 módulos. */
+const MARGIN = 4;
 
 /** Código QR como SVG (un único path): nítido al imprimir y sin innerHTML. */
 @Component({

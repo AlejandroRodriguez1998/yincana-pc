@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Unsubscribe, onSnapshot } from 'firebase/firestore';
+import { DISK_CODE_LENGTH } from '../../../core/data/disk-plan';
 import { DiskService, toDiskInfo, toDiskRun } from '../../../core/data/disk.service';
 import { describeError } from '../../../core/firebase/errors';
 import {
@@ -267,21 +268,61 @@ export class GroupDiskPage {
     void this.submitCode(this.codeText());
   }
 
+  /**
+   * Aplica localmente un avance ya confirmado por el servidor, sin esperar al
+   * listener: así la siguiente acción parte del estado real. Los contadores solo
+   * crecen, de modo que si el listener ya trajo algo más nuevo no se pisa.
+   */
+  private bump(change: { found?: number; step?: number; wrong?: number; finished?: boolean }): void {
+    this.run.update((cur) =>
+      cur
+        ? {
+            ...cur,
+            found: Math.max(cur.found, change.found ?? 0),
+            step: Math.max(cur.step, change.step ?? 0),
+            wrong: Math.max(cur.wrong, change.wrong ?? 0),
+            finishedAt: cur.finishedAt ?? (change.finished ? new Date() : null),
+          }
+        : cur,
+    );
+  }
+
+  /** Tras un rechazo inesperado: vuelve a leer la partida del servidor. */
+  private async resync(): Promise<void> {
+    try {
+      const run = await this.disk.fetchRun(this.testId(), this.store.groupId);
+      if (run) this.run.set(run);
+    } catch {
+      // El listener acabará trayendo el estado.
+    }
+  }
+
   private async submitCode(text: string): Promise<void> {
     const run = this.run();
-    if (!run || this.busy() || this.phase() !== 'locate') return;
+    if (!run || this.busy()) return;
     this.codeError.set(null);
-    if (!normalizeDiskCode(text)) {
+    if (this.phase() !== 'locate') {
+      this.toast.info(this.phase() === 'question' ? 'Primero responded la pregunta de este sector.' : 'Ya no hace falta escanear más sectores.');
+      return;
+    }
+    const code = normalizeDiskCode(text);
+    if (!code) {
       this.codeError.set('Escribe el código de la tarjeta.');
+      return;
+    }
+    if (code.length !== DISK_CODE_LENGTH) {
+      this.codeError.set('Ese QR o código no es de una tarjeta de sector.');
       return;
     }
     this.busy.set(true);
     try {
-      const ok = await this.disk.submitCode(run, text);
+      const ok = await this.disk.submitCode(run, code);
       if (ok) {
+        this.bump({ found: run.step + 1 });
         this.codeText.set('');
         navigator.vibrate?.(40);
       } else {
+        await this.resync();
         this.codeError.set(
           `Ese no es el sector ${this.target() ?? ''}. Puede ser de otro archivo o un señuelo: revisa la FAT.`,
         );
@@ -306,12 +347,14 @@ export class GroupDiskPage {
     try {
       const result = await this.disk.answer(run, option);
       if (result === 'correct') {
+        this.bump({ step: run.step + 1 });
         const label = this.target();
         const reveal = await this.disk.getReveal(run.id, run.step + 1);
         this.reveals.update((m) => new Map(m).set(run.step + 1, reveal));
         if (label && reveal.fragment) this.lastRead.set({ label, fragment: reveal.fragment, next: reveal.nextLabel });
         navigator.vibrate?.(40);
       } else {
+        this.bump({ wrong: run.wrong + 1 });
         const prev = this.wrongOptions();
         const options = new Set(prev.step === run.step ? prev.options : []);
         options.add(option);
@@ -320,6 +363,7 @@ export class GroupDiskPage {
         navigator.vibrate?.([80, 60, 80]);
       }
     } catch (err) {
+      await this.resync();
       this.toast.error(describeError(err, 'No se ha podido enviar la respuesta.'));
     } finally {
       this.busy.set(false);
@@ -329,10 +373,22 @@ export class GroupDiskPage {
   protected async submitFile(): Promise<void> {
     const run = this.run();
     if (!run || this.busy()) return;
-    if (!this.fileText().replace(/\D/g, '')) return;
+    const digits = this.fileText().replace(/\D/g, '').length;
+    if (!digits) return;
+    const info = this.info();
+    const expected = info ? info.count * info.fragmentDigits : digits;
+    if (digits !== expected) {
+      // Sin penalización: es un error de tecleo, no de reconstrucción.
+      this.toast.info(
+        `El archivo tiene ${expected} cifras y habéis escrito ${digits}. ` +
+          `${digits < expected ? 'Os falta algún sector' : 'Sobra algún sector'}: seguid las flechas hasta FIN.`,
+      );
+      return;
+    }
     this.busy.set(true);
     try {
       const result = await this.disk.submitFile(run, this.fileText());
+      this.bump(result === 'correct' ? { finished: true } : { wrong: run.wrong + 1 });
       if (result === 'wrong') {
         this.toast.error(
           `Archivo corrupto: +${Math.round((this.info()?.penaltyMs ?? 0) / 1000)} s. Sigue los punteros desde el sector inicial.`,
@@ -340,6 +396,7 @@ export class GroupDiskPage {
         navigator.vibrate?.([80, 60, 80]);
       }
     } catch (err) {
+      await this.resync();
       this.toast.error(describeError(err, 'No se ha podido enviar el archivo.'));
     } finally {
       this.busy.set(false);
