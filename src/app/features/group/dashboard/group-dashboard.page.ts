@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { DiskPlayButton } from './disk-play-button';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PwaService } from '../../../core/pwa/pwa.service';
 import { ThemeService } from '../../../core/ui/theme.service';
@@ -12,7 +12,7 @@ import { GroupStore } from '../group.store';
 
 @Component({
   selector: 'app-group-dashboard',
-  imports: [RouterLink, Icon, RankingList, EmptyState, ErrorState, DurationPipe],
+  imports: [DiskPlayButton, Icon, RankingList, EmptyState, ErrorState, DurationPipe],
   templateUrl: './group-dashboard.page.html',
   styleUrl: './group-dashboard.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

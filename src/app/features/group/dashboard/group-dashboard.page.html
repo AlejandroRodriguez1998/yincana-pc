@@ -134,9 +134,7 @@
                 <p class="small muted tc-desc">{{ c.test.description }}</p>
               }
               @if (c.test.kind === 'disk') {
-                <a class="btn btn-primary btn-block tc-play" [routerLink]="['/grupo/disco', c.test.id]">
-                  <app-icon name="disk" [size]="18" /> Jugar
-                </a>
+                <app-disk-play-button [testId]="c.test.id" [groupId]="store.groupId" />
               }
 
             </article>
