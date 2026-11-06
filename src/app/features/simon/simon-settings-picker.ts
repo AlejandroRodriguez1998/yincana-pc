@@ -51,9 +51,9 @@ import { PENALTY_OPTIONS, SimonPlaySettings, saveSettings } from './simon-settin
     <p class="summary small">
       De {{ firstSteps() }} a {{ lastSteps() }} pasos, cada vez más rápido.
       @if (s.penaltySeconds > 0) {
-        Cada fallo suma {{ s.penaltySeconds }} s y se repite la ronda.
+        Cada fallo suma {{ s.penaltySeconds }} s y se repite la ronda con una secuencia nueva.
       } @else {
-        Los fallos no penalizan: solo se repite la ronda.
+        Los fallos no penalizan: solo se repite la ronda con una secuencia nueva.
       }
     </p>
   `,

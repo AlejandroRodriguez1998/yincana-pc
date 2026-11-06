@@ -29,6 +29,26 @@ export function nextPad(sequence: readonly number[], random: (max: number) => nu
   return others[random(others.length)]!;
 }
 
+/**
+ * Secuencia nueva de `length` pasos para repetir una ronda tras un fallo: así no
+ * basta con recordar la que ya se ha visto. Siempre es distinta de `previous`.
+ */
+export function freshSequence(
+  previous: readonly number[],
+  random: (max: number) => number = randomInt,
+): number[] {
+  const length = previous.length;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const sequence: number[] = [];
+    for (let i = 0; i < length; i++) sequence.push(nextPad(sequence, random));
+    if (sequence.some((pad, i) => pad !== previous[i])) return sequence;
+  }
+  // Prácticamente imposible: fuerza un cambio en el último paso.
+  const sequence = [...previous];
+  if (length > 0) sequence[length - 1] = ((sequence[length - 1] ?? 0) + 1) % PAD_COUNT;
+  return sequence;
+}
+
 /** Paso aleatorio (0-3), sin restricciones. */
 export function randomPad(): number {
   return randomInt(PAD_COUNT);

@@ -31,6 +31,7 @@ import { Icon } from '../../../shared/components/icon/icon';
 import { QrScanner } from '../../../shared/components/qr-scanner/qr-scanner';
 import { eventValue } from '../../../shared/dom';
 import { DurationPipe } from '../../../shared/pipes/duration.pipe';
+import { AuthService } from '../../../core/auth/auth.service';
 import { GroupStore } from '../group.store';
 
 /** Bloque del disco ya leído, para el mapa. */
@@ -55,6 +56,7 @@ interface Block {
 export class GroupDiskPage {
   protected readonly store = inject(GroupStore);
   private readonly disk = inject(DiskService);
+  private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -251,7 +253,9 @@ export class GroupDiskPage {
     if (this.busy()) return;
     this.busy.set(true);
     try {
-      await this.disk.startRun(this.testId(), this.store.groupId);
+      const uid = this.auth.profile()?.uid ?? '';
+      const groupName = this.store.group.value()?.name ?? 'Grupo';
+      await this.disk.startRun(this.testId(), this.store.groupId, groupName, uid);
     } catch (err) {
       this.toast.error(describeError(err, 'No se ha podido empezar.'));
     } finally {

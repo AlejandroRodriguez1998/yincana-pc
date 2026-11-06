@@ -21,14 +21,21 @@ import { Icon } from '../../shared/components/icon/icon';
 import { DurationPipe } from '../../shared/pipes/duration.pipe';
 import { JudgeStore } from '../judge/judge.store';
 import { SimonAudio } from './simon-audio';
-import { evaluatePress, flashDurationMs, flashGapMs, nextPad, stepsInRound } from './simon-game';
+import { evaluatePress, flashDurationMs, flashGapMs, freshSequence, nextPad, stepsInRound } from './simon-game';
 import { loadSettings, normalizeSettings } from './simon-settings';
 
 type Phase = 'setup' | 'countdown' | 'showing' | 'input' | 'roundOk' | 'failed' | 'finished' | 'saved';
 
+/**
+ * Cada botón tiene, además de su color, una figura propia: así el juego se puede
+ * jugar sin distinguir colores (daltonismo).
+ */
+type PadShape = 'triangle' | 'circle' | 'square' | 'cross';
+
 interface Pad {
   readonly index: number;
   readonly name: string;
+  readonly shape: PadShape;
 }
 
 /**
@@ -36,7 +43,7 @@ interface Pad {
  * "Registrar tiempo" con el grupo, la prueba y los ajustes (dificultad, rondas,
  * penalización) ya elegidos, y arranca directamente. El grupo repite la
  * secuencia; el reloj corre hasta superar todas las rondas y cada fallo suma la
- * penalización de la prueba y repite la ronda. El resultado se guarda como
+ * penalización de la prueba y repite la ronda con una secuencia nueva. El resultado se guarda como
  * cualquier otro tiempo (transacción con auditoría y ranking).
  *
  * El tiempo se mide con performance.now(): no depende de los intervalos, que
@@ -66,10 +73,10 @@ export class SimonPage {
   readonly penalizacion = input<string>();
 
   protected readonly pads: readonly Pad[] = [
-    { index: 0, name: 'Verde' },
-    { index: 1, name: 'Rojo' },
-    { index: 2, name: 'Amarillo' },
-    { index: 3, name: 'Azul' },
+    { index: 0, name: 'Verde (triángulo)', shape: 'triangle' },
+    { index: 1, name: 'Rojo (círculo)', shape: 'circle' },
+    { index: 2, name: 'Amarillo (cuadrado)', shape: 'square' },
+    { index: 3, name: 'Azul (cruz)', shape: 'cross' },
   ];
 
   protected readonly test = computed<Test | null>(
@@ -128,7 +135,7 @@ export class SimonPage {
       case 'roundOk':
         return '¡Bien!';
       case 'failed':
-        return `¡Fallo! +${this.config().penaltySeconds} s · repetimos la ronda`;
+        return `¡Fallo! +${this.config().penaltySeconds} s · secuencia nueva`;
       case 'finished':
       case 'saved':
         return '¡Completado!';
@@ -166,7 +173,7 @@ export class SimonPage {
     const test = this.test();
     const group = this.group();
     if (!test || !group) return;
-    if (!this.occupied) {
+    if (!this.occupied && !test.simultaneous) {
       this.occupied = { groupId: group.id, testId: test.id };
       this.inProgress.start({ groupId: group.id, groupName: group.name, testId: test.id });
     }
@@ -218,6 +225,9 @@ export class SimonPage {
         this.fails.update((f) => f + 1);
         this.phase.set('failed');
         this.audio.error();
+        // Se repite la ronda (mismo número de pasos) con una secuencia nueva:
+        // no basta con recordar la que ya se ha visto.
+        this.sequence = freshSequence(this.sequence);
         this.later(1600, () => this.playSequence());
         break;
     }

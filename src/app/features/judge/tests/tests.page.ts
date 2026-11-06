@@ -49,6 +49,7 @@ export class TestsPage {
     order: [1, [Validators.required, Validators.min(0), Validators.max(9999)]],
     active: [true],
     kind: ['timer' as TestKind],
+    simultaneous: [false],
   });
 
   protected openCreate(): void {
@@ -60,6 +61,7 @@ export class TestsPage {
       order: nextOrder,
       active: true,
       kind: 'timer',
+      simultaneous: false,
     });
     this.editing.set('new');
   }
@@ -71,6 +73,7 @@ export class TestsPage {
       order: test.order,
       active: test.active,
       kind: test.kind,
+      simultaneous: test.simultaneous,
     });
     this.editing.set(test);
   }

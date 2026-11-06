@@ -34,6 +34,7 @@ import {
   Group,
   diskItemId,
   diskRunId,
+  inProgressDocId,
   normalizeDiskCode,
   normalizeDiskFile,
 } from '../models';
@@ -190,6 +191,11 @@ export class DiskService {
     return doc(this.db, COLLECTIONS.diskInfos, diskRunId(testId, groupId));
   }
 
+  /** Marca de "prueba ocupada" del grupo (ver InProgressService). */
+  private inProgressRef(testId: string, groupId: string): DocumentReference {
+    return doc(this.db, COLLECTIONS.inProgress, inProgressDocId(groupId, testId));
+  }
+
   runRef(testId: string, groupId: string): DocumentReference {
     return doc(this.db, COLLECTIONS.diskRuns, diskRunId(testId, groupId));
   }
@@ -249,6 +255,7 @@ export class DiskService {
       const disk = planGroupDisk(config, cryptoRandomInt);
       const base = { testId, groupId: group.id };
       ops.push((b) => b.delete(doc(this.db, COLLECTIONS.diskRuns, runId)));
+      ops.push((b) => b.delete(this.inProgressRef(testId, group.id)));
       ops.push((b) =>
         b.set(doc(this.db, COLLECTIONS.diskSecrets, runId), {
           ...base,
@@ -299,6 +306,7 @@ export class DiskService {
     this.actor.requireJudge();
     const batch = writeBatch(this.db);
     batch.delete(this.runRef(testId, groupId));
+    batch.delete(this.inProgressRef(testId, groupId));
     batch.update(this.infoRef(testId, groupId), { unlocked: false });
     await batch.commit();
   }
@@ -323,9 +331,14 @@ export class DiskService {
 
   // ------------------------------------------------------------ grupos
 
-  async startRun(testId: string, groupId: string): Promise<void> {
+  /**
+   * Empieza la partida y, en el mismo lote, marca la prueba como ocupada por el
+   * grupo (así jueces y otros grupos ven que el disco está en uso).
+   */
+  async startRun(testId: string, groupId: string, groupName: string, uid: string): Promise<void> {
     try {
-      await setDoc(this.runRef(testId, groupId), {
+      const batch = writeBatch(this.db);
+      batch.set(this.runRef(testId, groupId), {
         testId,
         groupId,
         startedAt: serverTimestamp(),
@@ -336,6 +349,16 @@ export class DiskService {
         lastAnswer: null,
         finishedAt: null,
       });
+      batch.set(this.inProgressRef(testId, groupId), {
+        groupId,
+        testId,
+        groupName,
+        // Lo empieza el propio grupo: no hay juez.
+        judgeId: uid,
+        judgeName: '',
+        startedAt: serverTimestamp(),
+      });
+      await batch.commit();
     } catch (err) {
       if (isDenied(err)) {
         throw new AppError('No se puede empezar todavía: esperad a que un juez os dé acceso.');
@@ -379,7 +402,10 @@ export class DiskService {
     const ref = this.runRef(run.testId, run.groupId);
     const file = normalizeDiskFile(text);
     try {
-      await updateDoc(ref, { finishedAt: serverTimestamp(), lastAnswer: file });
+      const batch = writeBatch(this.db);
+      batch.update(ref, { finishedAt: serverTimestamp(), lastAnswer: file });
+      batch.delete(this.inProgressRef(run.testId, run.groupId));
+      await batch.commit();
       return 'correct';
     } catch (err) {
       if (!isDenied(err)) throw err;

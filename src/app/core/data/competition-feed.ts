@@ -58,9 +58,12 @@ abstract class BaseFeed {
     return byTest as ReadonlyMap<string, readonly InProgress[]>;
   });
 
-  /** Pruebas activas sin nadie haciéndolas ahora mismo. */
+  /** Pruebas activas por turnos (un grupo cada vez): las que pueden estar libres u ocupadas. */
+  readonly turnTests = computed(() => this.activeTests().filter((t) => !t.simultaneous));
+
+  /** Pruebas por turnos sin nadie haciéndolas ahora mismo. */
   readonly freeTestIds = computed(
-    () => new Set(this.activeTests().filter((t) => !this.inProgressByTest().has(t.id)).map((t) => t.id)),
+    () => new Set(this.turnTests().filter((t) => !this.inProgressByTest().has(t.id)).map((t) => t.id)),
   );
 
   /** Si un juez ha revelado el ranking (por defecto, no). */

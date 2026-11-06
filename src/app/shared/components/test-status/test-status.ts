@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { InProgress } from '../../../core/models';
+import { Icon } from '../icon/icon';
 import { injectNow, sinceLabel } from '../../time/now';
 
 /**
@@ -9,8 +10,11 @@ import { injectNow, sinceLabel } from '../../time/now';
  */
 @Component({
   selector: 'app-test-status',
+  imports: [Icon],
   template: `
-    @if (entries().length === 0) {
+    @if (simultaneous()) {
+      <span class="badge st"><app-icon name="users" [size]="12" />Todos a la vez</span>
+    } @else if (entries().length === 0) {
       <span class="badge badge-success st"><span class="dot"></span>Libre</span>
     } @else if (isOwn()) {
       <span class="badge badge-primary st"><span class="dot pulse"></span>Estáis aquí · {{ since() }}</span>
@@ -70,6 +74,8 @@ export class TestStatus {
   readonly showGroup = input(false);
   /** Grupo que mira la pantalla (zona de grupos), para mostrar "Estáis aquí". */
   readonly ownGroupId = input<string | null>(null);
+  /** Prueba que hacen todos los grupos a la vez: no tiene estado libre/ocupada. */
+  readonly simultaneous = input(false);
 
   private readonly now = injectNow();
 
@@ -84,6 +90,8 @@ export class TestStatus {
     return ` · ${entries[0].groupName}${entries.length > 1 ? ` +${entries.length - 1}` : ''}`;
   });
   protected readonly title = computed(() =>
-    this.showGroup() ? this.entries().map((e) => `${e.groupName} (juez: ${e.judgeName})`).join(', ') : null,
+    this.showGroup() ? this.entries()
+          .map((e) => (e.judgeName ? `${e.groupName} (juez: ${e.judgeName})` : e.groupName))
+          .join(', ') : null,
   );
 }

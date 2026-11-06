@@ -17,54 +17,6 @@
   color: var(--primary);
 }
 
-.score-cta {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px 16px;
-  border-radius: 20px;
-  color: #fff;
-  text-decoration: none;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 55%, var(--accent)) 100%);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--primary) 35%, transparent);
-  transition: transform 0.1s;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    @include pcb-texture(rgba(255, 255, 255, 0.12));
-    pointer-events: none;
-  }
-
-  &:active {
-    transform: scale(0.985);
-  }
-
-  strong {
-    display: block;
-    font-size: 1.35rem;
-    font-weight: 800;
-    letter-spacing: -0.01em;
-  }
-}
-
-.cta-icon {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.cta-sub {
-  font-size: 0.85rem;
-  opacity: 0.9;
-}
-
 .stat {
   display: flex;
   flex-direction: column;
@@ -103,14 +55,53 @@
   display: flex;
   flex-direction: column;
 
+  li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    & + li {
+      border-top: 1px solid var(--border);
+    }
+  }
+
+  // Cada fila abre "Registrar tiempo" con esa prueba: se marca como enlace.
   a {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 40px;
+    min-height: 52px;
+    margin: 0 -8px;
+    padding: 0 4px 0 8px;
+    border-radius: var(--radius-sm);
     color: inherit;
     text-decoration: none;
+    transition: background-color 0.15s;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--surface-2);
+
+      .row-chevron {
+        color: var(--primary);
+        transform: translateX(2px);
+      }
+    }
+
+    &:active {
+      background: var(--surface-3);
+    }
   }
+}
+
+.row-chevron {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  transition:
+    color 0.15s,
+    transform 0.15s;
 }
 
 .mini-bar {
@@ -170,37 +161,57 @@
   }
 }
 
-.now-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.overall {
   display: flex;
-  flex-direction: column;
-
-  li {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 40px;
-
-    & + li {
-      border-top: 1px solid var(--border);
-    }
-  }
+  align-items: center;
+  gap: 10px;
 }
 
-.now-name {
-  flex: 1 1 35%;
+.tp-main {
+  flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 6px 0;
+}
+
+.tp-name {
+  max-width: 100%;
   font-weight: 500;
 }
 
-li.busy .now-name {
-  font-weight: 650;
+li.busy {
+  .tp-name {
+    font-weight: 650;
+  }
+
+  // Deja sitio al botón de liberar, que va fuera del enlace.
+  a {
+    margin-right: 0;
+  }
 }
 
-.now-release {
-  width: 32px;
-  height: 32px;
+.tp-done {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tp-release {
+  width: 34px;
+  height: 34px;
   margin-right: -6px;
+
+  &:hover {
+    color: var(--danger);
+  }
+}
+
+.rank-card {
+  overflow: hidden;
+}
+
+.rank-empty {
+  padding: 16px 14px;
 }

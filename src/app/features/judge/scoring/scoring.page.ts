@@ -228,7 +228,9 @@ export class ScoringPage {
   protected onStarted(): void {
     const group = this.group();
     const test = this.test();
-    if (group && test) this.inProgress.start({ groupId: group.id, groupName: group.name, testId: test.id });
+    if (group && test && !test.simultaneous) {
+      this.inProgress.start({ groupId: group.id, groupName: group.name, testId: test.id });
+    }
   }
 
   protected startTimeEdit(): void {

@@ -11,9 +11,9 @@
   }
 
   @if (store.loading()) {
-    <div class="stack-sm">
+    <div class="group-grid">
       @for (i of [1, 2, 3, 4]; track i) {
-        <div class="skeleton" style="height: 62px"></div>
+        <div class="skeleton" style="height: 120px; border-radius: 18px"></div>
       }
     </div>
   } @else if (store.groups().length === 0) {
@@ -35,28 +35,40 @@
       {{ store.activeGroups().length }} activos · {{ store.groups().length }} en total
     </p>
 
-    <ul class="list">
+    <div class="group-grid">
       @for (g of filtered(); track g.id) {
-        <li>
-          <a class="list-item" [routerLink]="['/juez/grupos', g.id]" [class.inactive]="!g.active">
-            <span class="avatar" aria-hidden="true">{{ badge(g.name) }}</span>
-            <span class="grow">
-              <span class="item-title">{{ g.name }}</span>
-              <span class="item-sub">
-                {{ g.participants.length }} participantes ·
-                {{ store.completedByGroup().get(g.id) ?? 0 }}/{{ store.feed.activeTests().length }} pruebas
-              </span>
+        @let done = store.completedByGroup().get(g.id) ?? 0;
+        @let total = store.feed.activeTests().length;
+        @let complete = total > 0 && done === total;
+        <a class="group-card" [routerLink]="['/juez/grupos', g.id]" [class.complete]="complete" [class.inactive]="!g.active">
+          <span class="gc-avatar" aria-hidden="true">{{ badge(g.name) }}</span>
+          <span class="gc-body">
+            <span class="gc-name">
+              {{ g.name }}
+              @if (!g.active) {
+                <span class="badge">Inactivo</span>
+              }
             </span>
-            @if (!g.active) {
-              <span class="badge">Inactivo</span>
+            <span class="gc-meta tabular">
+              @if (complete) {
+                <app-icon name="check" [size]="14" /> Todas hechas
+              } @else {
+                {{ done }}/{{ total }} pruebas
+              }
+            </span>
+            <span class="gc-bar"><span [style.width.%]="total ? (done / total) * 100 : 0"></span></span>
+            @if (g.participants.length > 0) {
+              <span class="gc-members" [attr.aria-label]="'Integrantes: ' + memberNames(g)">{{ memberNames(g) }}</span>
+            } @else {
+              <span class="gc-members empty">Sin integrantes</span>
             }
-            <app-icon name="chevron-right" [size]="18" />
-          </a>
-        </li>
+          </span>
+          <app-icon class="gc-chevron" name="chevron-right" [size]="22" />
+        </a>
       } @empty {
-        <li class="list-item muted">Ningún grupo coincide con la búsqueda.</li>
+        <p class="muted small">Ningún grupo coincide con la búsqueda.</p>
       }
-    </ul>
+    </div>
   }
 </div>
 

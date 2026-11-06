@@ -27,6 +27,7 @@ function toDoc(input: TestInput) {
     order: Math.trunc(input.order),
     active: input.active,
     kind: input.kind,
+    simultaneous: input.simultaneous,
   };
 }
 

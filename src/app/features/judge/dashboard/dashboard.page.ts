@@ -34,7 +34,7 @@ export class DashboardPage {
   protected readonly rebuilding = signal(false);
   protected readonly freeCount = computed(() => this.store.feed.freeTestIds().size);
   protected readonly busyCount = computed(
-    () => this.store.feed.activeTests().length - this.freeCount(),
+    () => this.store.feed.turnTests().length - this.freeCount(),
   );
 
   /** Libera a mano una prueba (p. ej. si un juez cerró la app sin guardar ni reiniciar). */

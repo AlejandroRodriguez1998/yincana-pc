@@ -11,15 +11,6 @@
     <app-error-state [message]="error" />
   }
 
-  <a routerLink="/juez/puntuar" class="score-cta">
-    <span class="cta-icon"><app-icon name="timer" [size]="28" /></span>
-    <span class="grow">
-      <strong>Registrar tiempo</strong>
-      <span class="cta-sub">Grupo → prueba → cronómetro → guardar</span>
-    </span>
-    <app-icon name="chevron-right" [size]="22" />
-  </a>
-
   @if (store.loading()) {
     <div class="grid-3">
       <div class="skeleton stat-skeleton"></div>
@@ -52,48 +43,43 @@
       </div>
     </section>
 
-    @if (store.feed.activeTests().length > 0) {
-      <section class="card card-pad stack-sm" aria-labelledby="now-title">
+    @if (store.progress().possible > 0) {
+      <!-- Progreso y estado en directo de cada prueba (libre / ocupada). -->
+      <section class="card card-pad stack-sm" aria-labelledby="tests-title">
         <div class="row-between">
-          <h2 id="now-title">Pruebas ahora</h2>
+          <h2 id="tests-title">Pruebas</h2>
           <span class="live small"><span class="live-dot"></span> {{ freeCount() }} libres · {{ busyCount() }} ocupadas</span>
         </div>
-        <ul class="now-list">
-          @for (t of store.feed.activeTests(); track t.id) {
-            @let busy = store.feed.inProgressByTest().get(t.id) ?? [];
-            <li [class.busy]="busy.length > 0">
-              <span class="now-name truncate">{{ t.name }}</span>
-              <app-test-status [entries]="busy" [showGroup]="true" />
-              @if (busy.length > 0) {
-                <button type="button" class="icon-btn now-release" (click)="release(t, busy)"
-                        [attr.aria-label]="'Liberar ' + t.name" title="Liberar">
-                  <app-icon name="x" [size]="16" />
-                </button>
-              }
-            </li>
-          }
-        </ul>
-      </section>
-    }
-
-    @if (store.progress().possible > 0) {
-      <section class="card card-pad stack-sm">
-        <div class="row-between">
-          <h2>Progreso por prueba</h2>
+        <div class="overall">
+          <div class="progress grow" role="progressbar" aria-label="Progreso general"
+               [attr.aria-valuenow]="store.progress().percent" aria-valuemin="0" aria-valuemax="100">
+            <span [style.width.%]="store.progress().percent"></span>
+          </div>
           <span class="muted small tabular">{{ store.progress().done }}/{{ store.progress().possible }}</span>
-        </div>
-        <div class="progress" role="progressbar" aria-label="Progreso general"
-             [attr.aria-valuenow]="store.progress().percent" aria-valuemin="0" aria-valuemax="100">
-          <span [style.width.%]="store.progress().percent"></span>
         </div>
         <ul class="test-progress">
           @for (item of store.progressByTest(); track item.test.id) {
-            <li>
+            @let busy = store.feed.inProgressByTest().get(item.test.id) ?? [];
+            <li [class.busy]="busy.length > 0">
               <a [routerLink]="['/juez/puntuar']" [queryParams]="{ prueba: item.test.id }">
-                <span class="truncate grow">{{ item.test.name }}</span>
+                <span class="tp-main">
+                  <span class="tp-name truncate">{{ item.test.name }}</span>
+                  @if (busy.length > 0 || item.done < item.total) {
+                    <app-test-status [entries]="busy" [showGroup]="true" [simultaneous]="item.test.simultaneous" />
+                  } @else {
+                    <span class="tp-done small">Completada por todos</span>
+                  }
+                </span>
                 <span class="tabular muted small">{{ item.done }}/{{ item.total }}</span>
                 <span class="mini-bar"><span [style.width.%]="item.total ? (item.done / item.total) * 100 : 0"></span></span>
+                <app-icon class="row-chevron" name="chevron-right" [size]="18" />
               </a>
+              @if (busy.length > 0) {
+                <button type="button" class="icon-btn tp-release" (click)="release(item.test, busy)"
+                        [attr.aria-label]="'Liberar ' + item.test.name" title="Liberar prueba">
+                  <app-icon name="x" [size]="16" />
+                </button>
+              }
             </li>
           }
         </ul>
@@ -111,17 +97,21 @@
       </app-empty-state>
     }
 
-    <app-reveal-toggle />
-
-    @if (top().length > 0) {
-      <section class="stack-sm">
-        <div class="section-title">
-          <span>Top 3</span>
-          <a routerLink="/ranking" class="small">Ver ranking</a>
-        </div>
-        <app-ranking-list [entries]="top()" [totalTests]="store.feed.activeTests().length" label="Top 3" />
-      </section>
-    }
+    <!-- Ranking: Top 3 y, en la misma tarjeta, si los grupos lo ven o no. -->
+    <section class="stack-sm" aria-labelledby="top-title">
+      <div class="section-title">
+        <span id="top-title">Top 3</span>
+        <a routerLink="/ranking" class="small">Ver ranking</a>
+      </div>
+      <div class="card rank-card">
+        @if (top().length > 0) {
+          <app-ranking-list [entries]="top()" [totalTests]="store.feed.activeTests().length" label="Top 3" [flat]="true" />
+        } @else {
+          <p class="muted small rank-empty">Todavía no hay tiempos registrados.</p>
+        }
+        <app-reveal-toggle />
+      </div>
+    </section>
   }
 
   <section class="stack-sm">

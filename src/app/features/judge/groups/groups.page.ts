@@ -3,7 +3,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { GroupsService, newParticipantId } from '../../../core/data/groups.service';
 import { describeError } from '../../../core/firebase/errors';
-import { GROUP_NAME_MAX, PARTICIPANTS_MAX } from '../../../core/models';
+import { GROUP_NAME_MAX, Group, PARTICIPANTS_MAX } from '../../../core/models';
 import { ToastService } from '../../../core/ui/toast.service';
 import { eventValue } from '../../../shared/dom';
 import { groupBadge } from '../../../shared/group-badge';
@@ -28,6 +28,11 @@ export class GroupsPage {
 
   protected readonly value = eventValue;
   protected readonly badge = groupBadge;
+
+  /** "Ana · Luis · Marta" */
+  protected memberNames(group: Group): string {
+    return group.participants.map((p) => p.name).join(' · ');
+  }
   protected readonly search = signal('');
   protected readonly creating = signal(false);
   protected readonly saving = signal(false);

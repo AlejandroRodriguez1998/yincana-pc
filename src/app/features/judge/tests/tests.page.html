@@ -30,6 +30,9 @@
             } @else {
               <span class="badge"><app-icon name="timer" [size]="12" /> Cronómetro</span>
             }
+            @if (t.simultaneous) {
+              <span class="badge"><app-icon name="users" [size]="12" /> Todos a la vez</span>
+            }
             @if (!t.active) {
               <span class="badge badge-warning">Inactiva</span>
             }
@@ -118,7 +121,7 @@
           preguntas desde su móvil y reconstruyen el archivo. Tras guardar, prepárala desde "Preparar y seguir la prueba".
         } @else if (form.controls.kind.value === 'simon') {
           Se juega en la pantalla /simon, donde eliges dificultad, rondas y penalización antes de empezar. El tiempo
-          corre hasta superar todas las rondas; cada fallo suma la penalización y repite la ronda.
+          corre hasta superar todas las rondas; cada fallo suma la penalización y repite la ronda con una secuencia nueva.
         } @else {
           El juez cronometra la prueba con el cronómetro de la app.
         }
@@ -128,6 +131,15 @@
       <label for="t-order">Orden</label>
       <input id="t-order" class="input" type="number" inputmode="numeric" formControlName="order" min="0" />
     </div>
+    <label class="switch">
+      <span>
+        <strong>Todos los grupos a la vez</strong>
+        <span class="hint block">
+          Para pruebas como el montaje, que hacen todos los grupos al mismo tiempo: no aparece como libre u ocupada.
+        </span>
+      </span>
+      <input type="checkbox" formControlName="simultaneous" />
+    </label>
     <label class="switch">
       <span>
         <strong>Activa</strong>

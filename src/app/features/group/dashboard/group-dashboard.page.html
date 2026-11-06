@@ -90,6 +90,33 @@
       }
     </section>
 
+    <!-- Pruebas pendientes -->
+    @if (store.pending().length > 0) {
+      <section class="stack-sm">
+        <div class="section-title">
+          <span>Pendientes ({{ store.pending().length }})</span>
+          <span class="live small"><span class="dot"></span> {{ store.freePendingCount() }} libres ahora</span>
+        </div>
+        <div class="cards">
+          @for (c of store.pendingByAvailability(); track c.test.id) {
+            @let busy = store.feed.inProgressByTest().get(c.test.id) ?? [];
+            <article class="test-card pending" [class.busy]="busy.length > 0"
+                     [class.free]="busy.length === 0 && !c.test.simultaneous">
+              <div class="tc-head">
+                <span class="tc-dot"></span>
+                <h3 class="grow">{{ c.test.name }}</h3>
+                <app-test-status [entries]="busy" [ownGroupId]="store.groupId" [simultaneous]="c.test.simultaneous" />
+              </div>
+              @if (c.test.kind === 'disk') {
+                <app-disk-play-button [testId]="c.test.id" [groupId]="store.groupId" />
+              }
+
+            </article>
+          }
+        </div>
+      </section>
+    }
+
     <!-- Pruebas realizadas -->
     @if (store.done().length > 0) {
       <section class="stack-sm">
@@ -113,35 +140,6 @@
                   <dd class="mono">{{ s.penaltyMs > 0 ? '+' + (s.penaltyMs | duration: false) : 'ninguna' }}</dd>
                 </div>
               </dl>
-            </article>
-          }
-        </div>
-      </section>
-    }
-
-    <!-- Pruebas pendientes -->
-    @if (store.pending().length > 0) {
-      <section class="stack-sm">
-        <div class="section-title">
-          <span>Pendientes ({{ store.pending().length }})</span>
-          <span class="live small"><span class="dot"></span> {{ store.freePendingCount() }} libres ahora</span>
-        </div>
-        <div class="cards">
-          @for (c of store.pendingByAvailability(); track c.test.id) {
-            @let busy = store.feed.inProgressByTest().get(c.test.id) ?? [];
-            <article class="test-card pending" [class.busy]="busy.length > 0" [class.free]="busy.length === 0">
-              <div class="tc-head">
-                <span class="tc-dot"></span>
-                <h3 class="grow">{{ c.test.name }}</h3>
-                <app-test-status [entries]="busy" [ownGroupId]="store.groupId" />
-              </div>
-              @if (c.test.description) {
-                <p class="small muted tc-desc">{{ c.test.description }}</p>
-              }
-              @if (c.test.kind === 'disk') {
-                <app-disk-play-button [testId]="c.test.id" [groupId]="store.groupId" />
-              }
-
             </article>
           }
         </div>

@@ -16,7 +16,7 @@ export const SIMON_DIFFICULTY_LABELS: Readonly<Record<SimonDifficulty, string>> 
 export interface SimonConfig {
   /** Rondas a superar; cada ronda añade un paso a la secuencia. */
   readonly rounds: number;
-  /** Segundos que se suman por cada fallo (y se repite la ronda). */
+  /** Segundos que se suman por cada fallo (y se repite la ronda con otra secuencia). */
   readonly penaltySeconds: number;
 }
 
@@ -36,6 +36,11 @@ export interface Test {
   readonly order: number;
   readonly active: boolean;
   readonly kind: TestKind;
+  /**
+   * La hacen todos los grupos a la vez (p. ej. el montaje): no tiene turnos,
+   * así que no se muestra como libre u ocupada.
+   */
+  readonly simultaneous: boolean;
   readonly createdAt: Date | null;
   readonly updatedAt: Date | null;
 }
@@ -46,6 +51,7 @@ export interface TestInput {
   readonly order: number;
   readonly active: boolean;
   readonly kind: TestKind;
+  readonly simultaneous: boolean;
 }
 
 export const TEST_NAME_MAX = 80;

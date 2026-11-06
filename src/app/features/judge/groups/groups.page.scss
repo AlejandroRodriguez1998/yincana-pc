@@ -1,3 +1,5 @@
+@use 'group-card';
+
 .search {
   position: relative;
 
@@ -12,31 +14,4 @@
   .input {
     padding-left: 42px;
   }
-}
-
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  border-radius: 11px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: -0.02em;
-}
-
-.item-title,
-.item-sub {
-  display: block;
-}
-
-.list-item > app-icon {
-  color: var(--text-faint);
-}
-
-.inactive {
-  opacity: 0.6;
 }

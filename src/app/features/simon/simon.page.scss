@@ -247,6 +247,8 @@
 .pad {
   --c: #43a047;
   --lit: #7dff9e;
+  display: grid;
+  place-items: center;
   border: none;
   background: var(--c);
   filter: brightness(0.55) saturate(0.9);
@@ -261,14 +263,33 @@
     opacity: 1;
   }
 
+  // Encendido: además del color, un aro blanco y la figura más grande y marcada,
+  // para que se note qué botón se ilumina sin depender del color.
   &.lit {
     background: var(--lit);
     filter: brightness(1.15);
     box-shadow:
       0 0 calc(var(--size) * 0.08) var(--lit),
+      inset 0 0 0 calc(var(--size) * 0.014) #fff,
       inset 0 0 calc(var(--size) * 0.05) rgba(255, 255, 255, 0.6);
     z-index: 1;
+
+    .shape {
+      fill: rgba(0, 0, 0, 0.68);
+      transform: scale(1.2);
+    }
   }
+}
+
+// Figura de cada botón (triángulo, círculo, cuadrado, cruz), siempre visible.
+.shape {
+  width: calc(var(--size) * 0.155);
+  height: calc(var(--size) * 0.155);
+  fill: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  transition:
+    transform 0.08s,
+    fill 0.08s;
 }
 
 .board.input .pad {

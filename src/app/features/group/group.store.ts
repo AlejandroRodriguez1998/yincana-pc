@@ -54,10 +54,14 @@ export class GroupStore {
     this.done().reduce((sum, c) => sum + (c.score?.totalMs ?? 0), 0),
   );
   readonly pending = computed(() => this.cards().filter((c) => !c.score));
-  /** Pendientes con las libres primero (luego las ocupadas), respetando el orden de las pruebas. */
+  /**
+   * Pendientes ordenadas: libres, ocupadas y, al final, las que se hacen todos
+   * a la vez (no se puede ir a ellas por libre). Respeta el orden de las pruebas.
+   */
   readonly pendingByAvailability = computed(() => {
     const free = this.feed.freeTestIds();
-    return [...this.pending()].sort((a, b) => Number(!free.has(a.test.id)) - Number(!free.has(b.test.id)));
+    const rank = (c: TestCard) => (c.test.simultaneous ? 2 : free.has(c.test.id) ? 0 : 1);
+    return [...this.pending()].sort((a, b) => rank(a) - rank(b));
   });
   /** Pruebas pendientes que nadie está haciendo ahora mismo. */
   readonly freePendingCount = computed(

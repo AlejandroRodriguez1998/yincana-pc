@@ -165,13 +165,16 @@ service cloud.firestore {
     }
 
     // ------------------------------------------------------------------ tests
-    // tests/{testId}: { name, description, order, active, kind, createdAt, updatedAt }
+    // tests/{testId}: { name, description, order, active, kind, simultaneous?, createdAt, updatedAt }
     // kind 'timer': se cronometra. kind 'simon': Simón dice (dificultad, rondas y
     // penalización se eligen al empezar cada partida). kind 'disk': "Recupera el
     // archivo" (ver la sección disk* más abajo).
 
+    // simultaneous (opcional): la hacen todos los grupos a la vez, sin turnos.
     function validTest(d) {
-      return hasExactly(d, ['name', 'description', 'order', 'active', 'kind', 'createdAt', 'updatedAt'])
+      return d.keys().hasAll(['name', 'description', 'order', 'active', 'kind', 'createdAt', 'updatedAt'])
+        && d.keys().hasOnly(['name', 'description', 'order', 'active', 'kind', 'simultaneous', 'createdAt', 'updatedAt'])
+        && (!('simultaneous' in d) || d.simultaneous is bool)
         && isText(d.name, 1, 80)
         && isText(d.description, 0, 1000)
         && d.order is int
@@ -255,24 +258,43 @@ service cloud.firestore {
     // ------------------------------------------------------------- inProgress
     // inProgress/{groupId}__{testId}: { groupId, testId, groupName, judgeId, judgeName, startedAt }
     // Qué grupo está haciendo qué prueba ahora mismo (pruebas libres / ocupadas).
-    // Lo escribe el juez al arrancar el cronómetro y lo borra al guardar o reiniciar.
+    // - Cronómetro / Simón: lo escribe el juez al arrancar y lo borra al guardar o reiniciar.
+    // - Disco: lo escribe el propio grupo al empezar su partida (en el mismo lote) y lo
+    //   borra al entregar el archivo; un juez lo borra al reiniciar la partida.
     // Todos los miembros lo leen: no contiene tiempos ni resultados.
+
+    function validInProgress(entryId) {
+      let d = incoming();
+      return hasExactly(d, ['groupId', 'testId', 'groupName', 'judgeId', 'judgeName', 'startedAt'])
+        && d.groupId is string
+        && d.testId is string
+        && entryId == d.groupId + '__' + d.testId
+        && isText(d.groupName, 1, 60)
+        && d.judgeId == request.auth.uid
+        && isText(d.judgeName, 0, 80)
+        && d.startedAt == request.time;
+    }
+
+    // Partida de disco del propio grupo, sin terminar, al final de la escritura.
+    function ownDiskRunInProgress() {
+      let d = incoming();
+      let runPath = docPath('diskRuns', d.testId + '__' + d.groupId);
+      return d.groupId == myGroupId()
+        && d.groupName == get(docPath('groups', d.groupId)).data.name
+        && existsAfter(runPath)
+        && getAfter(runPath).data.finishedAt == null;
+    }
 
     match /inProgress/{entryId} {
       allow read: if isMember();
 
-      allow create, update: if isJudge()
-        && hasExactly(incoming(), ['groupId', 'testId', 'groupName', 'judgeId', 'judgeName', 'startedAt'])
-        && incoming().groupId is string
-        && incoming().testId is string
-        && entryId == incoming().groupId + '__' + incoming().testId
-        && isText(incoming().groupName, 1, 60)
-        && incoming().judgeId == request.auth.uid
-        && isText(incoming().judgeName, 0, 80)
-        && incoming().startedAt == request.time;
+      allow create, update: if validInProgress(entryId)
+        && (isJudge() || (isGroupUser() && ownDiskRunInProgress()));
 
-      // Cualquier juez puede liberar una prueba (p. ej. si otro juez cerró la app).
-      allow delete: if isJudge();
+      // Cualquier juez puede liberar una prueba (p. ej. si otro juez cerró la app);
+      // un grupo, solo la suya. Se comprueba por el ID ({groupId}__{testId}) para que
+      // borrar una marca que no existe (partidas antiguas) no haga fallar el lote.
+      allow delete: if isJudge() || (isGroupUser() && entryId.split('__')[0] == myGroupId());
     }
 
     // -------------------------------------------------------------- auditLogs

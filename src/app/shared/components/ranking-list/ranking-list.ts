@@ -7,7 +7,7 @@ import { DurationPipe } from '../../pipes/duration.pipe';
   selector: 'app-ranking-list',
   imports: [DurationPipe],
   template: `
-    <ol class="list ranking" [attr.aria-label]="label()">
+    <ol class="list ranking" [class.flat]="flat()" [attr.aria-label]="label()">
       @for (entry of entries(); track entry.groupId) {
         <li class="row-item" [class.me]="entry.groupId === highlightId()">
           <span class="rank" [class]="'rank rank-' + entry.position">{{ entry.position }}</span>
@@ -33,6 +33,12 @@ import { DurationPipe } from '../../pipes/duration.pipe';
     </ol>
   `,
   styles: `
+    .flat {
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      background: transparent;
+    }
     .row-item {
       display: flex;
       align-items: center;
@@ -62,4 +68,6 @@ export class RankingList {
   readonly totalTests = input.required<number>();
   readonly highlightId = input<string | null>(null);
   readonly label = input('Clasificación');
+  /** Sin borde ni fondo propios, para ir dentro de otra tarjeta. */
+  readonly flat = input(false);
 }

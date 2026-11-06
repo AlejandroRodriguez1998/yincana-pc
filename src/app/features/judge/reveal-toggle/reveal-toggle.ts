@@ -15,24 +15,22 @@ import { Icon } from '../../../shared/components/icon/icon';
   imports: [Icon],
   template: `
     @let revealed = feed.rankingRevealed();
-    @if (variant() === 'card') {
-      <section class="card card-pad reveal" [class.on]="revealed">
-        <div class="row">
-          <span class="state-icon"><app-icon [name]="revealed ? 'eye' : 'eye-off'" /></span>
-          <div class="grow">
-            <h2>Ranking para los grupos</h2>
-            <p class="small muted">
-              {{ revealed ? 'Revelado: los grupos ven su posición y el ranking general.'
-                          : 'Oculto: los grupos solo ven sus propios tiempos, y en el ranking no se muestran totales ni posiciones.' }}
-            </p>
-          </div>
+    @if (variant() === 'footer') {
+      <div class="footer" [class.on]="revealed">
+        <span class="state-icon"><app-icon [name]="revealed ? 'eye' : 'eye-off'" [size]="18" /></span>
+        <div class="grow">
+          <strong class="footer-title">{{ revealed ? 'Visible para los grupos' : 'Oculto para los grupos' }}</strong>
+          <span class="small muted footer-sub">
+            {{ revealed ? 'Ven su posición y el ranking general.' : 'Solo ven sus propios tiempos.' }}
+          </span>
         </div>
-        <button type="button" class="btn btn-block" [class.btn-primary]="!revealed" [class.btn-outline]="revealed"
-                (click)="toggle()" [disabled]="busy() || feed.loading()">
-          <app-icon [name]="revealed ? 'eye-off' : 'eye'" [size]="18" />
-          {{ revealed ? 'Ocultar ranking a los grupos' : 'Revelar ranking a los grupos' }}
+        <button type="button" class="btn btn-sm" [class.btn-primary]="!revealed" [class.btn-outline]="revealed"
+                (click)="toggle()" [disabled]="busy() || feed.loading()"
+                [attr.aria-label]="revealed ? 'Ocultar ranking a los grupos' : 'Revelar ranking a los grupos'">
+          <app-icon [name]="revealed ? 'eye-off' : 'eye'" [size]="16" />
+          {{ revealed ? 'Ocultar' : 'Revelar' }}
         </button>
-      </section>
+      </div>
     } @else {
       <button type="button" class="chip" [class.on]="revealed" (click)="toggle()" [disabled]="busy() || feed.loading()"
               [attr.aria-label]="revealed ? 'Ranking visible para los grupos. Pulsa para ocultarlo' : 'Ranking oculto para los grupos. Pulsa para revelarlo'">
@@ -42,21 +40,31 @@ import { Icon } from '../../../shared/components/icon/icon';
     }
   `,
   styles: `
-    .reveal {
+    .footer {
       display: flex;
-      flex-direction: column;
+      align-items: center;
       gap: 12px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-2);
       &.on {
-        border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+        background: color-mix(in srgb, var(--accent) 8%, var(--surface));
       }
+    }
+    .footer-title {
+      display: block;
+      font-size: 0.9rem;
+    }
+    .footer-sub {
+      display: block;
     }
     .state-icon {
       display: grid;
       place-items: center;
-      width: 40px;
-      height: 40px;
+      width: 34px;
+      height: 34px;
       flex-shrink: 0;
-      border-radius: 12px;
+      border-radius: 10px;
       background: var(--surface-2);
       color: var(--text-muted);
     }
@@ -93,8 +101,8 @@ export class RevealToggle {
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
 
-  /** `card` en el panel del juez; `chip` en la barra del ranking. */
-  readonly variant = input<'card' | 'chip'>('card');
+  /** `footer`: pie de la tarjeta del Top 3 (panel del juez); `chip`: barra del ranking. */
+  readonly variant = input<'footer' | 'chip'>('footer');
   protected readonly busy = signal(false);
 
   protected async toggle(): Promise<void> {

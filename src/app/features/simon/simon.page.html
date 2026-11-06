@@ -66,7 +66,24 @@
               (pointerdown)="$event.preventDefault(); press(p.index)"
               (keydown.enter)="press(p.index)"
               [attr.aria-label]="p.name"
-            ></button>
+            >
+              <svg class="shape" viewBox="0 0 100 100" aria-hidden="true">
+                @switch (p.shape) {
+                  @case ('triangle') {
+                    <path d="M50 12 L90 84 L10 84 Z" />
+                  }
+                  @case ('circle') {
+                    <circle cx="50" cy="50" r="38" />
+                  }
+                  @case ('square') {
+                    <rect x="16" y="16" width="68" height="68" rx="8" />
+                  }
+                  @case ('cross') {
+                    <path d="M37 10 H63 V37 H90 V63 H63 V90 H37 V63 H10 V37 H37 Z" />
+                  }
+                }
+              </svg>
+            </button>
           }
           <div class="hub" aria-live="polite">
             @if (phase() === 'countdown') {

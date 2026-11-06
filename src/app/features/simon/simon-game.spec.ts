@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluatePress, flashDurationMs, nextPad, randomPad, stepsInRound } from './simon-game';
+import { evaluatePress, flashDurationMs, freshSequence, nextPad, randomPad, stepsInRound } from './simon-game';
 
 describe('evaluatePress', () => {
   const sequence = [0, 2, 1, 3];
@@ -56,5 +56,24 @@ describe('ritmo y aleatoriedad', () => {
       expect(pad).toBeGreaterThanOrEqual(0);
       expect(pad).toBeLessThan(4);
     }
+  });
+});
+
+describe('freshSequence (repetir ronda tras un fallo)', () => {
+  it('mantiene la longitud y siempre cambia la secuencia', () => {
+    for (let n = 0; n < 200; n++) {
+      const previous = [0, 2, 1, 3, 0].slice(0, 1 + (n % 5));
+      const next = freshSequence(previous);
+      expect(next).toHaveLength(previous.length);
+      expect(next).not.toEqual(previous);
+      expect(next.every((pad) => pad >= 0 && pad <= 3)).toBe(true);
+    }
+  });
+
+  it('cambia aunque el azar devuelva lo mismo una y otra vez', () => {
+    // Azar fijo: nextPad siempre elige lo mismo, así que hace falta el cambio forzado.
+    const next = freshSequence([0, 1, 0, 1], () => 0);
+    expect(next).toHaveLength(4);
+    expect(next).not.toEqual([0, 1, 0, 1]);
   });
 });
