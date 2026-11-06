@@ -35,6 +35,7 @@ import { groupBadge } from '../../../shared/group-badge';
 import { JudgeStore } from '../judge.store';
 import { Stopwatch } from './stopwatch';
 import { SimonSettingsPicker } from '../../simon/simon-settings-picker';
+import { DiskRunPanel, DiskRunResult } from '../disk/disk-run-panel';
 import { loadSettings, settingsQueryParams } from '../../simon/simon-settings';
 
 const PIN_KEY = 'yincana.scoring.pinnedTest';
@@ -70,7 +71,7 @@ type Step = 'group' | 'test' | 'form';
  */
 @Component({
   selector: 'app-scoring-page',
-  imports: [ReactiveFormsModule, RouterLink, NgTemplateOutlet, SimonSettingsPicker, Icon, TestStatus, Stopwatch, EmptyState, ErrorState, DurationPipe],
+  imports: [ReactiveFormsModule, RouterLink, NgTemplateOutlet, SimonSettingsPicker, DiskRunPanel, Icon, TestStatus, Stopwatch, EmptyState, ErrorState, DurationPipe],
   templateUrl: './scoring.page.html',
   styleUrl: './scoring.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -97,8 +98,8 @@ export class ScoringPage {
   protected readonly loadingExisting = signal(false);
   protected readonly loadError = signal<string | null>(null);
   protected readonly editingTime = signal(false);
-  /** Panel abierto en pruebas de Simón dice: jugar o registrar a mano. */
-  protected readonly simonPanel = signal<'simon' | 'manual'>('simon');
+  /** Panel abierto en pruebas de Simón dice o de disco: el juego o registrar a mano. */
+  protected readonly gamePanel = signal<'game' | 'manual'>('game');
   /** Ajustes del Simón dice (dificultad, rondas, penalización), recordados en el dispositivo. */
   protected readonly simonSettings = signal(loadSettings());
 
@@ -297,6 +298,12 @@ export class ScoringPage {
     }
   }
 
+  /** Registra el resultado calculado de la partida de disco (tiempo + fallos × penalización). */
+  protected saveDiskRun(result: DiskRunResult): void {
+    this.form.setValue({ timeMs: result.timeMs, penaltySeconds: Math.round(result.penaltyMs / 1000) });
+    void this.save();
+  }
+
   protected async remove(): Promise<void> {
     const group = this.group();
     const test = this.test();
@@ -359,7 +366,7 @@ export class ScoringPage {
     this.existing.set(null);
     this.loadError.set(null);
     this.editingTime.set(false);
-    this.simonPanel.set('simon');
+    this.gamePanel.set('game');
     this.form.reset({ timeMs: null, penaltySeconds: 0 });
 
     const group = this.group();

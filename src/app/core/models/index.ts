@@ -1,4 +1,5 @@
 export * from './audit-log.model';
+export * from './disk.model';
 export * from './group.model';
 export * from './in-progress.model';
 export * from './judge-request.model';

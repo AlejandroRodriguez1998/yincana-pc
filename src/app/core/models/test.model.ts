@@ -1,5 +1,5 @@
 /** Cómo se juega una prueba. Todas producen un tiempo (más penalizaciones). */
-export type TestKind = 'timer' | 'simon';
+export type TestKind = 'timer' | 'simon' | 'disk';
 
 /** Nivel del Simón dice (se elige al empezar cada partida): pasos iniciales y velocidad. */
 export type SimonDifficulty = 'easy' | 'normal' | 'hard';

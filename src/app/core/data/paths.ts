@@ -9,6 +9,13 @@ export const COLLECTIONS = {
   settings: 'settings',
   judgeRequests: 'judgeRequests',
   inProgress: 'inProgress',
+  // Prueba "Recupera el archivo" (kind 'disk'). Ver disk.model.ts.
+  diskConfigs: 'diskConfigs',
+  diskSecrets: 'diskSecrets',
+  diskInfos: 'diskInfos',
+  diskSteps: 'diskSteps',
+  diskReveals: 'diskReveals',
+  diskRuns: 'diskRuns',
 } as const;
 
 /** Desglose por grupo y prueba (solo jueces). */

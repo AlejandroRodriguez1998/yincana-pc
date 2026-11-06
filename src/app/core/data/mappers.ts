@@ -116,7 +116,7 @@ export function toTest(snapshot: DocumentSnapshot): Test {
     order: num(d['order']),
     active: bool(d['active'], true),
     // Las pruebas antiguas (sin `kind`) son de cronómetro.
-    kind: d['kind'] === 'simon' ? 'simon' : 'timer',
+    kind: d['kind'] === 'simon' || d['kind'] === 'disk' ? d['kind'] : 'timer',
     createdAt: date(d['createdAt']),
     updatedAt: date(d['updatedAt']),
   };

@@ -146,13 +146,14 @@ En Cloudflare: *Workers & Pages → Create → Import a repository*, elige el re
 |------------------------------|-------------------------------------------------------------------------------------|
 | `users/{uid}`                | `role`, `groupId`, `displayName`, `username`, `createdAt`                           |
 | `groups/{groupId}`           | `name`, `participants[{id,name}]`, `active`, `createdAt`, `updatedAt`               |
-| `tests/{testId}`             | `name`, `description`, `order`, `active`, `kind` (`timer`/`simon`), fechas |
+| `tests/{testId}`             | `name`, `description`, `order`, `active`, `kind` (`timer`/`simon`/`disk`), fechas |
 | `scores/{groupId}__{testId}` | `timeMs`, `penaltyMs`, `totalMs`, `judgeId`, `judgeName`, `auditId`, fechas          |
 | `auditLogs/{id}`             | `entityType`, `entityId`, `action`, grupo/prueba (id y nombre), `before`, `after`, `note`, `actorId`, `actorName`, `at` |
 | `standings/current`          | `groups.{groupId} = { name, active, results.{testId} = { totalMs, penaltyMs } }` (solo jueces) |
 | `standings/public`           | `groups.{groupId} = { name, active, totalMs, completed }` (jueces; grupos solo si está revelado) |
 | `judgeRequests/{uid}`        | `displayName`, `email`, `status` (`pending`/`rejected`), `createdAt` (solicitudes de `/alta-jueces`) |
 | `settings/competition`       | `rankingRevealed`, `revealedAt`, `updatedBy`, `updatedAt` (lo escriben los jueces)   |
+| `disk*/…`                    | Prueba *Recupera el archivo*: ver [disk.model.ts](src/app/core/models/disk.model.ts) |
 
 - **Sin duplicados.** El ID `groupId__testId` impide dos resultados para la misma combinación.
 - **Resúmenes `standings/current` y `standings/public`.** Se actualizan en la misma transacción que cada
@@ -182,6 +183,25 @@ En Cloudflare: *Workers & Pages → Create → Import a repository*, elige el re
   Al terminar, el juez guarda el resultado (tiempo + penalizaciones) como cualquier otro. Se juega pulsando los
   colores (ratón o pantalla táctil). Se abre desde *Registrar tiempo* con el botón "Jugar", con el grupo y la prueba ya elegidos; al terminar,
   "Siguiente grupo" vuelve allí con la misma prueba seleccionada.
+- **Recupera el archivo** (`kind: 'disk'`): simula cómo guarda un disco un archivo fragmentado.
+  - **Preparación** (*Pruebas → Preparar y seguir la prueba*): se fijan los sectores físicos y dónde se esconde
+    cada uno, cuántos sectores ocupa el archivo de cada grupo, la penalización y el banco de preguntas (viene
+    uno inicial de cultura general). *Imprimir* genera las tarjetas (etiqueta tipo `0x2A`, QR y código) y la tabla
+    FAT (sector → ubicación) para colgarla. *Generar discos* crea para cada grupo una cadena aleatoria de
+    sectores, una pregunta por sector (con las respuestas barajadas) y un número que hay que reconstruir.
+    Los sectores que no use un grupo le sirven de señuelo.
+  - **Partida** (móvil del grupo, *Mi grupo → Jugar*): al montar el disco empieza el tiempo. El grupo mira en
+    la FAT dónde está el sector que toca, escanea su QR (con la app o con la cámara del móvil) o teclea el código,
+    responde la pregunta y, si acierta, lee el fragmento y el siguiente sector. Al final, en el *mapa del disco*
+    los bloques salen en orden físico, así que para escribir el archivo hay que seguir los punteros desde el
+    sector inicial. Cada respuesta fallada (preguntas o archivo) suma la penalización.
+  - **Registro**: el panel de la prueba muestra en directo por dónde va cada grupo; al terminar, el juez
+    registra el tiempo (`finishedAt − startedAt` + fallos × penalización) con un toque, con auditoría como
+    cualquier otro resultado. También puede reiniciar la partida de un grupo o regenerar los discos.
+  - **Seguridad**: es la única escritura de los grupos, y solo en su `diskRuns/{testId}__{groupId}`. Las reglas
+    comprueban cada avance contra `diskSecrets` (que el grupo no puede leer), así que no se puede avanzar sin
+    la tarjeta ni ver preguntas o fragmentos antes de tiempo. Límite conocido: alguien que escriba peticiones a
+    mano desde la consola podría probar respuestas sin que cuente el fallo.
 - **Ranking oculto**: por defecto los grupos no ven su posición ni el ranking general. Un juez lo revela
   (u oculta) desde el panel o con el botón "Revelar" de `/ranking` y `/resultados`, y el cambio llega al instante.
   Mientras está oculto, el podio muestra "?" y la tabla aparece en orden alfabético y sin tiempo total ni

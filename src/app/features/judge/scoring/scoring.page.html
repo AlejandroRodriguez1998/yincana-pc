@@ -263,33 +263,49 @@
             </div>
           </ng-template>
 
-          @if (t.kind === 'simon') {
+          @if (t.kind === 'simon' || t.kind === 'disk') {
             <!-- Dos paneles desplegables: solo uno abierto a la vez -->
             <div class="accordion">
-              <section class="acc-item" [class.open]="simonPanel() === 'simon'">
-                <button type="button" class="acc-head" (click)="simonPanel.set('simon')"
-                        [attr.aria-expanded]="simonPanel() === 'simon'" aria-controls="panel-simon">
-                  <span class="simon-dot" aria-hidden="true"></span>
-                  <span class="grow">
-                    <strong class="acc-title">Jugar al Simón dice</strong>
-                    <span class="item-sub">En pantalla grande · el resultado se guarda al terminar</span>
-                  </span>
+              <section class="acc-item" [class.open]="gamePanel() === 'game'">
+                <button type="button" class="acc-head" (click)="gamePanel.set('game')"
+                        [attr.aria-expanded]="gamePanel() === 'game'" aria-controls="panel-game">
+                  @if (t.kind === 'simon') {
+                    <span class="simon-dot" aria-hidden="true"></span>
+                    <span class="grow">
+                      <strong class="acc-title">Jugar al Simón dice</strong>
+                      <span class="item-sub">En pantalla grande · el resultado se guarda al terminar</span>
+                    </span>
+                  } @else {
+                    <span class="acc-icon" aria-hidden="true"><app-icon name="disk" [size]="20" /></span>
+                    <span class="grow">
+                      <strong class="acc-title">Partida del grupo</strong>
+                      <span class="item-sub">Tiempo en directo desde su móvil · fallos incluidos</span>
+                    </span>
+                  }
                   <app-icon class="acc-chevron" name="chevron-down" [size]="20" />
                 </button>
-                @if (simonPanel() === 'simon') {
-                  <div class="acc-body" id="panel-simon">
-                    <app-simon-settings-picker [(settings)]="simonSettings" />
-                    <a class="btn btn-primary btn-lg btn-block" [routerLink]="['/simon']"
-                       [queryParams]="simonParams(t, group()!)">
-                      <app-icon name="play" [size]="20" /> Jugar
-                    </a>
+                @if (gamePanel() === 'game') {
+                  <div class="acc-body" id="panel-game">
+                    @if (t.kind === 'simon') {
+                      <app-simon-settings-picker [(settings)]="simonSettings" />
+                      <a class="btn btn-primary btn-lg btn-block" [routerLink]="['/simon']"
+                         [queryParams]="simonParams(t, group()!)">
+                        <app-icon name="play" [size]="20" /> Jugar
+                      </a>
+                    } @else {
+                      <app-disk-run-panel [testId]="t.id" [groupId]="group()!.id" [saving]="saving()"
+                                          (record)="saveDiskRun($event)" />
+                      @if (existing(); as e) {
+                        <p class="hint">Ya registrado: {{ e.totalMs | duration }}. Al registrar se sustituye.</p>
+                      }
+                    }
                   </div>
                 }
               </section>
 
-              <section class="acc-item" [class.open]="simonPanel() === 'manual'">
-                <button type="button" class="acc-head" (click)="simonPanel.set('manual')"
-                        [attr.aria-expanded]="simonPanel() === 'manual'" aria-controls="panel-manual">
+              <section class="acc-item" [class.open]="gamePanel() === 'manual'">
+                <button type="button" class="acc-head" (click)="gamePanel.set('manual')"
+                        [attr.aria-expanded]="gamePanel() === 'manual'" aria-controls="panel-manual">
                   <span class="acc-icon" aria-hidden="true"><app-icon name="timer" [size]="20" /></span>
                   <span class="grow">
                     <strong class="acc-title">Registrar el tiempo a mano</strong>
@@ -297,8 +313,11 @@
                   </span>
                   <app-icon class="acc-chevron" name="chevron-down" [size]="20" />
                 </button>
-                @if (simonPanel() === 'manual') {
+                @if (gamePanel() === 'manual') {
                   <div class="acc-body stack" id="panel-manual">
+                    @if (t.kind === 'disk') {
+                      <p class="hint">Solo si falla la app: aquí no se suman solos los fallos del quiz.</p>
+                    }
                     <ng-container [ngTemplateOutlet]="manualFields" />
                   </div>
                 }

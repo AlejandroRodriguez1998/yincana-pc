@@ -65,7 +65,8 @@
 
 .segmented {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  // Tres tipos en una fila: icono encima del texto para que quepa en móvil.
+  grid-template-columns: repeat(3, 1fr);
 
   gap: 6px;
   padding: 4px;
@@ -74,12 +75,16 @@
 
   label {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-height: 42px;
+    gap: 4px;
+    min-height: 58px;
+    padding: 6px 4px;
     border-radius: 9px;
+    font-size: 0.85rem;
     font-weight: 600;
+    text-align: center;
     color: var(--text-muted);
     cursor: pointer;
 
@@ -107,4 +112,8 @@
   height: 16px;
   border-radius: 50%;
   background: conic-gradient(#e53935 0 25%, #1e88e5 0 50%, #fdd835 0 75%, #43a047 0);
+}
+
+.disk-link {
+  margin-top: 8px;
 }

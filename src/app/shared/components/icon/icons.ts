@@ -98,6 +98,20 @@ export const ICONS = {
   download: ['M12 3v12', 'm7 10 5 5 5-5', 'M5 21h14'],
   volume: ['M11 5 6 9H2v6h4l5 4V5Z', 'M15.5 8.5a5 5 0 0 1 0 7', 'M19 5a10 10 0 0 1 0 14'],
   'volume-off': ['M11 5 6 9H2v6h4l5 4V5Z', 'm22 9-6 6', 'm16 9 6 6'],
+  disk: [
+    'M22 12H2',
+    'M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z',
+    'M6 16h.01',
+    'M10 16h.01',
+  ],
+  scan: [
+    'M3 7V5a2 2 0 0 1 2-2h2',
+    'M17 3h2a2 2 0 0 1 2 2v2',
+    'M21 17v2a2 2 0 0 1-2 2h-2',
+    'M7 21H5a2 2 0 0 1-2-2v-2',
+    'M7 12h10',
+  ],
+  printer: ['M6 9V2h12v7', 'M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2', 'M6 14h12v8H6Z'],
 } as const satisfies Record<string, readonly string[]>;
 
 export type IconName = keyof typeof ICONS;
