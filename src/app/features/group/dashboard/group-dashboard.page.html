@@ -122,13 +122,18 @@
     <!-- Pruebas pendientes -->
     @if (store.pending().length > 0) {
       <section class="stack-sm">
-        <div class="section-title"><span>Pendientes ({{ store.pending().length }})</span></div>
+        <div class="section-title">
+          <span>Pendientes ({{ store.pending().length }})</span>
+          <span class="live small"><span class="dot"></span> {{ store.freePendingCount() }} libres ahora</span>
+        </div>
         <div class="cards">
-          @for (c of store.pending(); track c.test.id) {
-            <article class="test-card pending">
+          @for (c of store.pendingByAvailability(); track c.test.id) {
+            @let busy = store.feed.inProgressByTest().get(c.test.id) ?? [];
+            <article class="test-card pending" [class.busy]="busy.length > 0" [class.free]="busy.length === 0">
               <div class="tc-head">
                 <span class="tc-dot"></span>
-                <h3>{{ c.test.name }}</h3>
+                <h3 class="grow">{{ c.test.name }}</h3>
+                <app-test-status [entries]="busy" [ownGroupId]="store.groupId" />
               </div>
               @if (c.test.description) {
                 <p class="small muted tc-desc">{{ c.test.description }}</p>

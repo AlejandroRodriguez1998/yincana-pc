@@ -52,6 +52,30 @@
       </div>
     </section>
 
+    @if (store.feed.activeTests().length > 0) {
+      <section class="card card-pad stack-sm" aria-labelledby="now-title">
+        <div class="row-between">
+          <h2 id="now-title">Pruebas ahora</h2>
+          <span class="live small"><span class="live-dot"></span> {{ freeCount() }} libres · {{ busyCount() }} ocupadas</span>
+        </div>
+        <ul class="now-list">
+          @for (t of store.feed.activeTests(); track t.id) {
+            @let busy = store.feed.inProgressByTest().get(t.id) ?? [];
+            <li [class.busy]="busy.length > 0">
+              <span class="now-name truncate">{{ t.name }}</span>
+              <app-test-status [entries]="busy" [showGroup]="true" />
+              @if (busy.length > 0) {
+                <button type="button" class="icon-btn now-release" (click)="release(t, busy)"
+                        [attr.aria-label]="'Liberar ' + t.name" title="Liberar">
+                  <app-icon name="x" [size]="16" />
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
     @if (store.progress().possible > 0) {
       <section class="card card-pad stack-sm">
         <div class="row-between">

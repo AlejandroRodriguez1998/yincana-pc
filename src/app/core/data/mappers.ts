@@ -7,6 +7,7 @@ import {
   AuditValues,
   CompetitionSettings,
   Group,
+  InProgress,
   JudgeRequest,
   Participant,
   PublicStanding,
@@ -90,6 +91,19 @@ export function toGroup(snapshot: DocumentSnapshot): Group {
     active: bool(d['active'], true),
     createdAt: date(d['createdAt']),
     updatedAt: date(d['updatedAt']),
+  };
+}
+
+export function toInProgress(snapshot: DocumentSnapshot): InProgress {
+  const d = dataOf(snapshot);
+  return {
+    id: snapshot.id,
+    groupId: str(d['groupId']),
+    testId: str(d['testId']),
+    groupName: str(d['groupName'], 'Grupo'),
+    judgeId: str(d['judgeId']),
+    judgeName: str(d['judgeName']),
+    startedAt: date(d['startedAt']),
   };
 }
 

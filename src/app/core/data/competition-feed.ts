@@ -2,9 +2,9 @@ import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } f
 import { collection, doc, orderBy, query } from 'firebase/firestore';
 import { FIRESTORE } from '../firebase/firebase.providers';
 import { liveDoc, liveDocWhen, liveQuery } from '../firebase/live';
-import { GROUP_REVEAL_DELAY_MS } from '../models';
+import { GROUP_REVEAL_DELAY_MS, InProgress } from '../models';
 import { computePublicRanking, computeRanking } from '../ranking/ranking';
-import { toPublicStandings, toSettings, toStandings, toTest } from './mappers';
+import { toInProgress, toPublicStandings, toSettings, toStandings, toTest } from './mappers';
 import {
   COLLECTIONS,
   PUBLIC_STANDINGS_DOC_ID,
@@ -13,8 +13,9 @@ import {
 } from './paths';
 
 /**
- * Datos en directo comunes a jueces y grupos: pruebas (M lecturas iniciales)
- * y ajustes de la competición (1 lectura).
+ * Datos en directo comunes a jueces y grupos: pruebas (M lecturas iniciales),
+ * ajustes de la competición (1 lectura) y pruebas en curso (una lectura por
+ * prueba ocupada; después, solo cambios).
  *
  * Los feeds no son singletons: se proveen en el componente contenedor de cada
  * zona, de modo que los listeners se crean una vez por zona y se cancelan al salir.
@@ -36,6 +37,31 @@ abstract class BaseFeed {
   readonly activeTests = computed(() => this.tests().filter((t) => t.active));
   readonly activeTestIds = computed(() => new Set(this.activeTests().map((t) => t.id)));
   readonly testsById = computed(() => new Map(this.tests().map((t) => [t.id, t])));
+
+  /**
+   * Pruebas en curso ahora mismo. No cuenta en `loading` ni en `error`: es
+   * información de apoyo y, si falla, el resto de la app sigue funcionando.
+   */
+  private readonly inProgressLive = liveQuery(collection(this.db, COLLECTIONS.inProgress), toInProgress);
+
+  /** Grupos que están haciendo cada prueba, del que lleva más tiempo al que menos. */
+  readonly inProgressByTest = computed(() => {
+    const byTest = new Map<string, InProgress[]>();
+    const sorted = [...this.inProgressLive.value()].sort(
+      (a, b) => (a.startedAt?.getTime() ?? Date.now()) - (b.startedAt?.getTime() ?? Date.now()),
+    );
+    for (const entry of sorted) {
+      const list = byTest.get(entry.testId);
+      if (list) list.push(entry);
+      else byTest.set(entry.testId, [entry]);
+    }
+    return byTest as ReadonlyMap<string, readonly InProgress[]>;
+  });
+
+  /** Pruebas activas sin nadie haciéndolas ahora mismo. */
+  readonly freeTestIds = computed(
+    () => new Set(this.activeTests().filter((t) => !this.inProgressByTest().has(t.id)).map((t) => t.id)),
+  );
 
   /** Si un juez ha revelado el ranking (por defecto, no). */
   readonly rankingRevealed = computed(() => this.settingsLive.value()?.rankingRevealed === true);

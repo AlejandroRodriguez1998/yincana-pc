@@ -200,6 +200,25 @@
     border-style: dashed;
     box-shadow: none;
   }
+
+  // Libre: se puede ir ya.
+  &.pending.free {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+
+    .tc-dot {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 25%, transparent);
+    }
+  }
+
+  // Ocupada: hay otro grupo (o el propio) haciéndola.
+  &.pending.busy {
+    opacity: 0.75;
+
+    .tc-dot {
+      border-color: var(--warning);
+    }
+  }
 }
 
 .tc-head {
@@ -208,6 +227,7 @@
   gap: 8px;
 
   h3 {
+    min-width: 0;
     font-size: 0.98rem;
   }
 }

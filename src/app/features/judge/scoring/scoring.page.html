@@ -120,8 +120,11 @@
                   <span class="choice-meta truncate">{{ t.description }}</span>
                 }
               </span>
+              @let busy = store.feed.inProgressByTest().get(t.id) ?? [];
               @if (r) {
                 <span class="badge badge-success mono"><app-icon name="check" [size]="12" /> {{ r.totalMs | duration }}</span>
+              } @else if (busy.length > 0) {
+                <app-test-status [entries]="busy" [showGroup]="true" />
               } @else {
                 <span class="badge">Pendiente</span>
               }
@@ -169,7 +172,7 @@
             <!-- Cronómetro -->
             <div class="field">
               <span class="label">Tiempo</span>
-              <app-stopwatch [storageKey]="comboKey()!" (captured)="onCaptured($event)" />
+              <app-stopwatch [storageKey]="comboKey()!" (captured)="onCaptured($event)" (started)="onStarted()" />
               <div class="time-row">
                 @if (editingTime()) {
                   <input

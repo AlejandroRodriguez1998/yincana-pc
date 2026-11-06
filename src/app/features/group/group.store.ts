@@ -54,6 +54,15 @@ export class GroupStore {
     this.done().reduce((sum, c) => sum + (c.score?.totalMs ?? 0), 0),
   );
   readonly pending = computed(() => this.cards().filter((c) => !c.score));
+  /** Pendientes con las libres primero (luego las ocupadas), respetando el orden de las pruebas. */
+  readonly pendingByAvailability = computed(() => {
+    const free = this.feed.freeTestIds();
+    return [...this.pending()].sort((a, b) => Number(!free.has(a.test.id)) - Number(!free.has(b.test.id)));
+  });
+  /** Pruebas pendientes que nadie está haciendo ahora mismo. */
+  readonly freePendingCount = computed(
+    () => this.pending().filter((c) => this.feed.freeTestIds().has(c.test.id)).length,
+  );
   readonly progress = computed(() => {
     const total = this.cards().length;
     return total ? Math.round((this.done().length / total) * 100) : 0;

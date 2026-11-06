@@ -251,6 +251,29 @@ service cloud.firestore {
       allow delete: if isJudge();
     }
 
+    // ------------------------------------------------------------- inProgress
+    // inProgress/{groupId}__{testId}: { groupId, testId, groupName, judgeId, judgeName, startedAt }
+    // Qué grupo está haciendo qué prueba ahora mismo (pruebas libres / ocupadas).
+    // Lo escribe el juez al arrancar el cronómetro y lo borra al guardar o reiniciar.
+    // Todos los miembros lo leen: no contiene tiempos ni resultados.
+
+    match /inProgress/{entryId} {
+      allow read: if isMember();
+
+      allow create, update: if isJudge()
+        && hasExactly(incoming(), ['groupId', 'testId', 'groupName', 'judgeId', 'judgeName', 'startedAt'])
+        && incoming().groupId is string
+        && incoming().testId is string
+        && entryId == incoming().groupId + '__' + incoming().testId
+        && isText(incoming().groupName, 1, 60)
+        && incoming().judgeId == request.auth.uid
+        && isText(incoming().judgeName, 0, 80)
+        && incoming().startedAt == request.time;
+
+      // Cualquier juez puede liberar una prueba (p. ej. si otro juez cerró la app).
+      allow delete: if isJudge();
+    }
+
     // -------------------------------------------------------------- auditLogs
     // Historial inmutable. Solo visible para jueces.
 

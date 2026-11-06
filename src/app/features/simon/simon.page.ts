@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CompetitionFeed } from '../../core/data/competition-feed';
+import { InProgressService } from '../../core/data/in-progress.service';
 import { ScoresService } from '../../core/data/scores.service';
 import { describeError } from '../../core/firebase/errors';
 import { Group, SIMON_DIFFICULTY_LABELS, Test } from '../../core/models';
@@ -52,6 +53,7 @@ interface Pad {
 export class SimonPage {
   protected readonly store = inject(JudgeStore);
   private readonly scores = inject(ScoresService);
+  private readonly inProgress = inject(InProgressService);
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
@@ -136,6 +138,8 @@ export class SimonPage {
   });
 
   private autoStarted = false;
+  /** Grupo y prueba marcados como "en curso" (para liberarlos al salir). */
+  private occupied: { groupId: string; testId: string } | null = null;
 
   constructor() {
     // Se llega desde "Registrar tiempo" pulsando "Jugar": la partida empieza sola.
@@ -150,6 +154,7 @@ export class SimonPage {
     });
 
     inject(DestroyRef).onDestroy(() => {
+      this.release();
       this.clearTimers();
       this.audio.close();
     });
@@ -158,7 +163,13 @@ export class SimonPage {
   // ---------- Inicio ----------
 
   protected start(): void {
-    if (!this.test() || !this.group()) return;
+    const test = this.test();
+    const group = this.group();
+    if (!test || !group) return;
+    if (!this.occupied) {
+      this.occupied = { groupId: group.id, testId: test.id };
+      this.inProgress.start({ groupId: group.id, groupName: group.name, testId: test.id });
+    }
     this.audio.unlock();
     this.resetGame();
     this.phase.set('countdown');
@@ -224,7 +235,10 @@ export class SimonPage {
       confirmLabel: 'Abandonar',
       danger: true,
     });
-    if (ok) this.toSetup();
+    if (ok) {
+      this.toSetup();
+      this.release();
+    }
   }
 
   // ---------- Resultado ----------
@@ -241,6 +255,7 @@ export class SimonPage {
         this.store.feed.activeTestIds(),
       );
       this.phase.set('saved');
+      this.release();
       this.toast.success(`Guardado: ${group.name} · ${test.name}`);
     } catch (err) {
       this.toast.error(describeError(err, 'No se ha podido guardar el resultado.'));
@@ -326,6 +341,13 @@ export class SimonPage {
     this.later(durationMs, () => {
       if (this.lit() === pad) this.lit.set(null);
     });
+  }
+
+  /** El grupo deja la prueba (guardada, abandonada o al salir del Simón dice). */
+  private release(): void {
+    if (!this.occupied) return;
+    this.inProgress.finishQuietly(this.occupied.groupId, this.occupied.testId);
+    this.occupied = null;
   }
 
   private toSetup(): void {

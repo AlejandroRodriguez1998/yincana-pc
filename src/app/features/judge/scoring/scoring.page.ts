@@ -19,6 +19,7 @@ import {
 } from '@angular/forms';
 import { NgTemplateOutlet } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { InProgressService } from '../../../core/data/in-progress.service';
 import { ScoreTarget, ScoresService } from '../../../core/data/scores.service';
 import { describeError } from '../../../core/firebase/errors';
 import { Group, MAX_TIME_MS, Score, Test, computeTotalTime } from '../../../core/models';
@@ -27,6 +28,7 @@ import { ToastService } from '../../../core/ui/toast.service';
 import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { ErrorState } from '../../../shared/components/error-state/error-state';
 import { Icon } from '../../../shared/components/icon/icon';
+import { TestStatus } from '../../../shared/components/test-status/test-status';
 import { DurationPipe, formatDuration, parseDuration } from '../../../shared/pipes/duration.pipe';
 import { eventValue } from '../../../shared/dom';
 import { groupBadge } from '../../../shared/group-badge';
@@ -68,7 +70,7 @@ type Step = 'group' | 'test' | 'form';
  */
 @Component({
   selector: 'app-scoring-page',
-  imports: [ReactiveFormsModule, RouterLink, NgTemplateOutlet, SimonSettingsPicker, Icon, Stopwatch, EmptyState, ErrorState, DurationPipe],
+  imports: [ReactiveFormsModule, RouterLink, NgTemplateOutlet, SimonSettingsPicker, Icon, TestStatus, Stopwatch, EmptyState, ErrorState, DurationPipe],
   templateUrl: './scoring.page.html',
   styleUrl: './scoring.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -76,6 +78,7 @@ type Step = 'group' | 'test' | 'form';
 export class ScoringPage {
   protected readonly store = inject(JudgeStore);
   private readonly scores = inject(ScoresService);
+  private readonly inProgress = inject(InProgressService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
@@ -214,6 +217,17 @@ export class ScoringPage {
 
   protected onCaptured(ms: number | null): void {
     this.form.controls.timeMs.setValue(ms);
+    // Reiniciar el cronómetro = el grupo no está haciendo la prueba: se libera.
+    const group = this.group();
+    const test = this.test();
+    if (ms === null && group && test) this.inProgress.finishQuietly(group.id, test.id);
+  }
+
+  /** Arranca el cronómetro: la prueba pasa a estar ocupada por este grupo. */
+  protected onStarted(): void {
+    const group = this.group();
+    const test = this.test();
+    if (group && test) this.inProgress.start({ groupId: group.id, groupName: group.name, testId: test.id });
   }
 
   protected startTimeEdit(): void {
@@ -274,6 +288,7 @@ export class ScoringPage {
           : `${result === 'created' ? 'Guardado' : 'Actualizado'}: ${group.name} · ${test.name} → ${total}`,
       );
       this.stopwatch()?.clear();
+      this.inProgress.finishQuietly(group.id, test.id);
       this.goNext(group, test);
     } catch (err) {
       this.toast.error(describeError(err, 'No se ha podido guardar el resultado.'));
@@ -298,6 +313,7 @@ export class ScoringPage {
       await this.scores.remove(this.target(group, test), this.store.feed.activeTestIds());
       this.toast.success('Resultado eliminado.');
       this.stopwatch()?.clear();
+      this.inProgress.finishQuietly(group.id, test.id);
       this.prepareForm(this.comboKey());
     } catch (err) {
       this.toast.error(describeError(err, 'No se ha podido eliminar el resultado.'));

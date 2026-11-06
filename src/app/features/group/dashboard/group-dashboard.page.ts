@@ -6,12 +6,13 @@ import { EmptyState } from '../../../shared/components/empty-state/empty-state';
 import { ErrorState } from '../../../shared/components/error-state/error-state';
 import { Icon } from '../../../shared/components/icon/icon';
 import { RankingList } from '../../../shared/components/ranking-list/ranking-list';
+import { TestStatus } from '../../../shared/components/test-status/test-status';
 import { DurationPipe } from '../../../shared/pipes/duration.pipe';
 import { GroupStore } from '../group.store';
 
 @Component({
   selector: 'app-group-dashboard',
-  imports: [Icon, RankingList, EmptyState, ErrorState, DurationPipe],
+  imports: [Icon, RankingList, EmptyState, ErrorState, DurationPipe, TestStatus],
   templateUrl: './group-dashboard.page.html',
   styleUrl: './group-dashboard.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

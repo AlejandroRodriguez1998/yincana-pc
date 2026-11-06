@@ -63,6 +63,8 @@ export class Stopwatch {
   readonly storageKey = input.required<string>();
   /** Emite el tiempo al pausar (ms) o null al reiniciar. */
   readonly captured = output<number | null>();
+  /** Emite al arrancar desde cero (no al reanudar tras una pausa). */
+  readonly started = output<void>();
 
   private readonly state = signal<StopwatchState>({ accumulatedMs: 0, startedAt: null });
   private readonly now = signal(Date.now());
@@ -91,7 +93,9 @@ export class Stopwatch {
 
   start(): void {
     if (this.running()) return;
+    const fresh = this.state().accumulatedMs === 0;
     this.update({ ...this.state(), startedAt: Date.now() });
+    if (fresh) this.started.emit();
   }
 
   pause(): number {

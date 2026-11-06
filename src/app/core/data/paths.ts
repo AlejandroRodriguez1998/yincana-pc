@@ -8,6 +8,7 @@ export const COLLECTIONS = {
   standings: 'standings',
   settings: 'settings',
   judgeRequests: 'judgeRequests',
+  inProgress: 'inProgress',
 } as const;
 
 /** Desglose por grupo y prueba (solo jueces). */
